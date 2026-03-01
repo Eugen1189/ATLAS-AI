@@ -1,0 +1,31 @@
+=== 🛠 ЗВІТ ДІАГНОСТИКИ ATLAS ===
+
+🖥 СИСТЕМА:
+OS: Windows 11 25H2 (Build 26200)
+Python: 3.11.9
+Користувач: Eugen1189
+Процесор: Intel64 Family 6 Model 186 Stepping 2, GenuineIntel
+Ядра: 10 фізичних / 16 логічних
+
+⚡ РЕСУРСИ (реальні виміри):
+CPU завантаження: 5.3%
+Температура CPU: N/A
+RAM: 15.7 GB загалом | 8.6 GB використано (54.7%) | 7.1 GB вільно
+Диск C:: 476.0 GB загалом | 143.5 GB використано (30.1%) | 332.5 GB вільно
+Батарея: 47% (Зарядка: Ні)
+
+📚 БІБЛІОТЕКИ:
+✅ flet
+✅ vosk
+✅ google.generativeai
+✅ sounddevice
+✅ pyautogui
+✅ psutil
+
+📂 ФАЙЛИ:
+✅ main_with_atlas.py
+✅ config/scenarios.json
+✅ skills/router.py
+✅ skills/departments/operations.py
+
+✅ Сканування завершено. Система готова до роботи.

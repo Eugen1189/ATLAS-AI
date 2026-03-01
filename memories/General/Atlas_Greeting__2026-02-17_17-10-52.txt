@@ -1,0 +1,1 @@
+User checks if Atlas is online and responsive. Atlas confirms connection and offers assistance.

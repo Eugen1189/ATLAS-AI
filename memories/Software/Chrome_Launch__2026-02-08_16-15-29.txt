@@ -1,0 +1,1 @@
+User requests AI to launch Chrome browser. AI confirms execution.

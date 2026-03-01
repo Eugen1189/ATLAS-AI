@@ -1,0 +1,1 @@
+User requests to turn on the camera. AI command: INTERNAL:vision:start

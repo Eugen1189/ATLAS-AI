@@ -1,0 +1,1 @@
+User asks Atlas to start working mode and show IP address. AI responds that the program is not found.

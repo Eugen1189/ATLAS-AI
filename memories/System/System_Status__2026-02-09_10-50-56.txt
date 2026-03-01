@@ -1,0 +1,1 @@
+User requested system status and AI provided a detailed diagnostic report including OS information, hardware resources usage, installed libraries and file presence.

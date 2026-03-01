@@ -1,0 +1,1 @@
+User initiates reminder interaction; AI confirms task completion (music/youtube) and seeks further instruction (list/create).

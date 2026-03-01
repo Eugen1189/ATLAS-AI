@@ -1,0 +1,1 @@
+User command 'Увімкне жаста' not recognized. AI requests clarification, suspecting a program name.

@@ -1,0 +1,1 @@
+User requests to start 'working mode' on Atlas robot, but the program is not found.

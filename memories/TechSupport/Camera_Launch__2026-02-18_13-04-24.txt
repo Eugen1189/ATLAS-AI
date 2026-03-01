@@ -1,0 +1,1 @@
+User asks how to launch camera. AI fails to provide instructions, suggests internet search.

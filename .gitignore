@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+vision_buffer.png
+response_audio.mp3
+*.log
+
+# Environment variables (секрети)
+.env
+
+# Config (містить секрети - НЕ комітити!)
+config.py
+
+# Model files (великі файли)
+# model/  # Розкоментуйте, якщо модель занадто велика для GitHub
+
+# Music files (великі файли)
+# music/*.mp3  # Розкоментуйте, якщо музика занадто велика
+
+
+/model/
+/venv/
+/audio_output/
+/screenshots/
+/memories/*.db
+.env

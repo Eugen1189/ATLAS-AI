@@ -1,0 +1,1 @@
+User requests top processes, AI returns CPU usage of Cursor, python, audiodg, and CrossDeviceService.

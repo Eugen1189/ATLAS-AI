@@ -1,0 +1,1 @@
+User requests to stop music. AI proposes a script to stop running processes related to music players and requires confirmation.

@@ -1,0 +1,1 @@
+User instructs AI to automate Notepad actions: launch, type text, save.

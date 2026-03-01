@@ -1,0 +1,1 @@
+User asks to list departments and if AI can see through the camera. AI responds with 'INTERNAL:vision:start'.

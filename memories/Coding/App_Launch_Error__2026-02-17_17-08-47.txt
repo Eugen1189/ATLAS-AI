@@ -1,0 +1,1 @@
+User attempts to launch an application 'візуальне керування' but the AI cannot find its path and suggests adding it to launcher.py.

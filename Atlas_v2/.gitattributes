@@ -1,0 +1,2 @@
+model/graph/words.txt filter=lfs diff=lfs merge=lfs -text
+model/graph/HCLG.fst filter=lfs diff=lfs merge=lfs -text

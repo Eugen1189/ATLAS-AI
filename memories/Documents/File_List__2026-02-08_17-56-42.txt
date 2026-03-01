@@ -1,0 +1,1 @@
+User requests a list of files in the Documents folder; AI returns a PowerShell error related to encoding in the Out-String command.

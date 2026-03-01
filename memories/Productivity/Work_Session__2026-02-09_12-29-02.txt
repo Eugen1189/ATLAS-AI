@@ -1,0 +1,1 @@
+User requests Atlas to open cursor, play background music for concentration, and set a reminder for a break in 2 hours. Atlas confirms launching cursor.

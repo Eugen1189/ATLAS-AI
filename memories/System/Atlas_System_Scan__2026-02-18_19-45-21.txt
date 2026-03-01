@@ -1,0 +1,1 @@
+User requests Atlas to scan the system. Atlas provides a detailed diagnostic report including OS, Python version, user, processor information, CPU load, CPU temperature, RAM usage, disk space, battery status, installed libraries, and a list of existing files. The scan is completed and the system is ready to work.

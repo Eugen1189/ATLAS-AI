@@ -1,0 +1,1 @@
+User requests to start camera; system initiates vision module.

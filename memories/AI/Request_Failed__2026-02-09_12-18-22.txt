@@ -1,0 +1,1 @@
+User asked to turn off music and play a relaxing space video on YouTube. AI failed to understand the request and suggested adding it to launcher.py.

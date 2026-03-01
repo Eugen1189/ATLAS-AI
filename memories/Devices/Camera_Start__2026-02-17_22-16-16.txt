@@ -1,0 +1,1 @@
+User requests to start the camera. AI triggers the internal vision start command.

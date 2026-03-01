@@ -1,0 +1,1 @@
+User asked ATLAS to list its departments. ATLAS responded with: Vision, Memory, Browser, System Operations, Coding, File Operations, Web Search, and Scenario.

@@ -1,0 +1,1 @@
+User asks to ping Google and show local IP address; AI provides the IP address.

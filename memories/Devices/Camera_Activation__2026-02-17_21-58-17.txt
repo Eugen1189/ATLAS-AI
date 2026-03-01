@@ -1,0 +1,1 @@
+User requests camera activation. AI triggers internal vision system.

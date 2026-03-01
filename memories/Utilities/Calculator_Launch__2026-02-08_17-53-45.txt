@@ -1,0 +1,1 @@
+User requests to launch the calculator; AI acknowledges and initiates the request.

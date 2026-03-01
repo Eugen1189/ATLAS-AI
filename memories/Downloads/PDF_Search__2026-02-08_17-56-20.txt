@@ -1,0 +1,1 @@
+User asks to find all PDF files in Downloads folder, but AI searches the query in Google.

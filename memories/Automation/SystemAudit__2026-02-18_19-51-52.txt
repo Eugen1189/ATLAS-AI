@@ -1,0 +1,1 @@
+User requests to open Notepad, write 'System audit passed successfully' and save the file to the desktop.

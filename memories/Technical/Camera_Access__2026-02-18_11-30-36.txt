@@ -1,0 +1,1 @@
+User requests camera activation; AI denies access due to limitations.

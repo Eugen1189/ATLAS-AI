@@ -1,0 +1,1 @@
+User requested 'focus_mode', but the script failed. Step 3 resulted in an ArgumentException related to volume mute.

@@ -1,0 +1,1 @@
+User requested presentation mode. The automated script 'presentation_mode' failed. Multiple errors occurred during execution, including an ArgumentException related to volume mute functionality in PowerShell.

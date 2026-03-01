@@ -1,0 +1,1 @@
+User request to start the camera and the AI's internal command.

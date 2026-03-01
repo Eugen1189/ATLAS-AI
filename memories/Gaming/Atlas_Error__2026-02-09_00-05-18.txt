@@ -1,0 +1,1 @@
+User triggered 'gaming_mode' scenario, but execution failed at Step 2 with an error.

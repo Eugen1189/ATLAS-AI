@@ -1,0 +1,1 @@
+User requested 'presentation mode' from Atlas. AI reports the 'presentation_mode' script failed with errors on steps 1 and 2.
