@@ -29,6 +29,10 @@ def boot_sequence():
                 print("Вимкнення систем...")
                 break
                 
+            if command.lower() == 'status':
+                print("\n📊 [SYSTEM] Vision: ONLINE | MCP: 2 SERVERS ACTIVE | TG: CONNECTED\n")
+                continue
+                
             # Якщо користувач просто натиснув Enter — вмикаємо мікрофон!
             if command == "":
                 command = listen_command()

@@ -1,7 +1,7 @@
 import os
 import threading
 import sys
-from .vision_manager import VisionManager
+from .logic import VisionManager
 
 # Глобальна змінна для контролю драйвера
 _vision_instance = None

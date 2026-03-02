@@ -1,6 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
+from .google_logic import google_research
 
 # Динамічно знаходимо шлях до .env
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -48,4 +49,4 @@ def perplexity_search(query: str) -> str:
         return f"Критична помилка під час пошуку: {e}"
 
 # Експортуємо інструмент
-EXPORTED_TOOLS = [perplexity_search]
+EXPORTED_TOOLS = [perplexity_search, google_research]

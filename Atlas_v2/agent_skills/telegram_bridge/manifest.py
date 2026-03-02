@@ -2,9 +2,9 @@ import os
 import requests
 from dotenv import load_dotenv
 
-# Динамічно знаходимо шлях до .env
+# Динамічно знаходимо шлях до .env (C:\Projects\Atlas\.env)
 current_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
+env_path = os.path.abspath(os.path.join(current_dir, "..", "..", "..", ".env"))
 load_dotenv(dotenv_path=env_path)
 
 def send_telegram_message(text: str) -> str:
@@ -18,7 +18,7 @@ def send_telegram_message(text: str) -> str:
     Args:
         text: Текст повідомлення, яке потрібно відправити.
     """
-    print(f"📱 [Telegram Bridge]: Відправляю повідомлення на смартфон...")
+    print(f"[Telegram Bridge]: Відправляю повідомлення на смартфон...")
     
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -47,7 +47,7 @@ def send_telegram_file(file_path: str, caption: str = "") -> str:
     Відправляє файл (фото, документ) у Telegram.
     Використовуй цей інструмент, коли користувач просить надіслати скріншот або звіт.
     """
-    print(f"📱 [Telegram Bridge]: Відправляю файл {file_path}...")
+    print(f"[Telegram Bridge]: Відправляю файл {file_path}...")
     
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -73,10 +73,13 @@ def send_telegram_file(file_path: str, caption: str = "") -> str:
             response = requests.post(url, data=data, files=files, timeout=30)
             
             if response.status_code == 200:
+                print(f"[Telegram Bridge]: Файл {file_path} успішно надіслано.")
                 return f"✅ Файл {file_path} надіслано успішно."
             else:
+                print(f"[Telegram Bridge]: Помилка сервера {response.status_code}: {response.text}")
                 return f"Помилка API Telegram: {response.text}"
     except Exception as e:
+        print(f"[Telegram Bridge]: Критична помилка: {e}")
         return f"Помилка відправки файлу: {e}"
 
 # Експортуємо інструменти для Оркестратора
