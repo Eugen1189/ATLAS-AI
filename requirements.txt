@@ -37,3 +37,5 @@ schedule>=1.2.0
 ddgs>=0.1.0
 tqdm==4.67.1
 colorama==0.4.6
+mcp>=1.1.2
+googlesearch-python>=1.2.3

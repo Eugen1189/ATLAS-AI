@@ -44,7 +44,9 @@ config.py
 
 /model/
 /venv/
+# Local data & memories
 /audio_output/
-/screenshots/
-/memories/*.db
+/memories/
+last_action.json
+vision_*.png
 .env
