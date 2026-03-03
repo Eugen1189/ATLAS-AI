@@ -1,10 +1,13 @@
 [run]
-source = Atlas_v2
+source = .
+include = Atlas_v2/*
 omit = 
     venv/*
     */tests/*
     */__pycache__/*
-    # Atlas_v2/test_telegram_confirm.py  # Including everything for the final report
+    */audio_output/*
+    */memories/*
+    Atlas_v2/test_telegram_confirm.py
 
 
 [report]

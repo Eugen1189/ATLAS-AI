@@ -269,7 +269,9 @@ class VisionManager:
             # Preview
             img_small = cv2.resize(img, (640, 360))
             cv2.imshow("AXIS Vision V2.5", img_small)
-            if cv2.waitKey(1) & 0xFF == ord('q'): break
+            if cv2.waitKey(1) & 0xFF == ord('q'): 
+                self.is_running = False
+                break
 
         cv2.destroyAllWindows()
 
