@@ -1,0 +1,12 @@
+[run]
+source = Atlas_v2
+omit = 
+    venv/*
+    */tests/*
+    */__pycache__/*
+    # Atlas_v2/test_telegram_confirm.py  # Including everything for the final report
+
+
+[report]
+fail_under = 80
+show_missing = True

@@ -1,0 +1,5 @@
+# This file makes modern pytest discovery easier and sets the root
+[tool.pytest.ini_options]
+pythonpath = ["Atlas_v2"]
+testpaths = ["Atlas_v2/tests"]
+python_files = ["test_*.py"]
