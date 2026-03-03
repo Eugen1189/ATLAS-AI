@@ -40,6 +40,7 @@ Atlas V2 utilizes a **Dynamic Skill Discovery** system:
 - **Orchestrator:** Located in `core/orchestrator.py`, it scans `agent_skills/*/manifest.py` on boot.
 - **Function Calling:** Native Gemini 2.0 implementation for zero-latency tool selection.
 - **Memory Manager:** Persistent SQLite-backed context for user preferences and long-term facts.
+- **Localization (i18n):** Full support for multiple languages (English, Ukrainian, Spanish) using a custom `core/i18n.py` module and JSON locales.
 
 ---
 
