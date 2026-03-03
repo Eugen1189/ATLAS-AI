@@ -2,44 +2,45 @@ import os
 import threading
 import sys
 from .logic import VisionManager
+from core.i18n import lang
 
-# Глобальна змінна для контролю драйвера
+# Global variable for driver control
 _vision_instance = None
 
 def toggle_gestures(active: bool) -> str:
     """
-    Вмикає або вимикає режим керування комп'ютером за допомогою жестів рук через веб-камеру.
-    Використовуй це, коли користувач хоче керувати курсором, гортати сторінки або 
-    працювати з інтерфейсом "без рук".
+    Enables or disables the mode for controlling the computer using hand gestures via webcam.
+    Use this when the user wants to control the cursor, scroll pages, or
+    interact with the interface "hands-free".
     
     Args:
-        active: True для увімкнення, False для вимкнення.
+        active: True to enable, False to disable.
     """
     global _vision_instance
     if active:
         if _vision_instance and _vision_instance.is_running:
-            return "Система візуального керування вже активна."
+            return lang.get("vision.already_active")
         
-        # Створюємо екземпляр драйвера
+        # Create driver instance
         _vision_instance = VisionManager(camera_index=0)
-        # Запускаємо в окремому потоці, щоб не блокувати Атласа
+        # Start in a separate thread to avoid blocking Atlas
         threading.Thread(target=_vision_instance.start, daemon=True).start()
-        return "Система візуального керування активована. Тепер я бачу твої жести."
+        return lang.get("vision.activated")
     else:
         if _vision_instance:
             _vision_instance.stop()
             _vision_instance = None
-            return "Система візуального керування вимкнена."
-        return "Система вже була вимкнена."
+            return lang.get("vision.disabled")
+        return lang.get("vision.already_disabled")
 
 def capture_visual_context() -> str:
     """
-    Робить миттєвий знімок з веб-камери та аналізує його.
-    Використовуй це, щоб 'побачити' користувача, впізнати предмет у його руках 
-    або зрозуміти обстановку навколо.
+    Takes an instant snapshot from the webcam and analyzes it.
+    Use this to 'see' the user, recognize an object in their hands,
+    or understand the surrounding environment.
     """
     global _vision_instance
-    # Якщо менеджер не запущений, запускаємо його тимчасово
+    # If the manager is not running, start it temporarily
     temp_mode = False
     if not _vision_instance or not _vision_instance.is_running:
         _vision_instance = VisionManager(camera_index=0)
@@ -56,8 +57,8 @@ def capture_visual_context() -> str:
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, "vision_snap.jpg")
         frame.save(save_path)
-        return f"Я зробив фото. (Системна замітка: Фото збережено в {save_path}. Gemini проаналізує його мультимодально)."
+        return lang.get("vision.photo_taken", path=save_path)
     
-    return "Не вдалося отримати зображення з камери."
+    return lang.get("vision.camera_failed")
 
 EXPORTED_TOOLS = [toggle_gestures, capture_visual_context]

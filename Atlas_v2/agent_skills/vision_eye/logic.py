@@ -8,8 +8,9 @@ import math
 import queue
 import warnings
 from PIL import Image
+from core.i18n import lang
 
-# Приховуємо технічні попередження від MediaPipe / Protobuf
+# Hide technical warnings from MediaPipe / Protobuf
 warnings.filterwarnings("ignore", category=UserWarning, module='google.protobuf.symbol_database')
 
 class VisionManager:
@@ -60,11 +61,11 @@ class VisionManager:
             self.mp_draw = mp.solutions.drawing_utils
             return True
         except Exception as e:
-            print(f"[VISION] Failed to load MediaPipe: {e}")
+            print(lang.get("vision.mp_load_error", error=e))
             return False
 
     def start(self):
-        print("[VISION] Спроба запуску камери (VisionManager.start)...")
+        print(lang.get("vision.starting"))
         if self.is_running: return
         if not self._init_resources(): return
         self.is_running = True
@@ -92,17 +93,17 @@ class VisionManager:
         return None
 
     def _capture_worker(self):
-        print(f"[VISION] Спроба підключення до камери (index={self.camera_index})...")
-        # Використовуємо MSMF (Media Foundation) замість DSHOW для Windows 10/11
+        print(lang.get("vision.connecting", index=self.camera_index))
+        # Use MSMF (Media Foundation) instead of DSHOW for Windows 10/11
         cap = cv2.VideoCapture(self.camera_index, cv2.CAP_MSMF)
         if not cap.isOpened():
-             # Fallback якщо не працює MSMF, пробуємо просто індекс без бекенда
+             # Fallback if MSMF doesn't work, try just index without backend
              for idx in [0, 1, 2]:
                  cap = cv2.VideoCapture(idx)
                  if cap.isOpened(): break
         
         if not cap.isOpened():
-            print("[VISION] No camera found.")
+            print(lang.get("vision.no_camera"))
             self.is_running = False
             return
 
@@ -120,7 +121,7 @@ class VisionManager:
         cap.release()
 
     def _get_finger_states(self, lm_list):
-        """Повертає стан 5 пальців (True - випрямлений, False - зігнутий)."""
+        """Returns the state of 5 fingers (True - straight, False - bent)."""
         states = []
         if not lm_list: return [False]*5
         
@@ -137,18 +138,18 @@ class VisionManager:
             dist_tip = math.hypot(tip_x - x0, tip_y - y0)
             dist_pip = math.hypot(pip_x - x0, pip_y - y0)
             
-            # Палець випрямлений, якщо кінчик далі від зап'ястя, ніж середній суглоб
+            # Finger is straight if the tip is further from the wrist than the middle joint
             states.append(dist_tip > dist_pip)
             
         return states
 
     def _is_fist(self, lm_list):
-        """Перевіряє чи рука стиснута в кулак (всі 4 пальці зігнуті)."""
+        """Checks if the hand is clenched into a fist (all 4 fingers bent)."""
         states = self._get_finger_states(lm_list)
         return states[1:] == [False, False, False, False]
 
     def _is_l_shape(self, lm_list):
-        """Перевіряє чи рука показує жест 'L' (скріншот)"""
+        """Checks if the hand is showing an 'L' gesture (screenshot)"""
         states = self._get_finger_states(lm_list)
         return states == [True, True, False, False, False]
 
@@ -182,15 +183,15 @@ class VisionManager:
                     hand1_label = results.multi_handedness[0].classification[0].label
                     hand2_label = results.multi_handedness[1].classification[0].label
                     
-                    # Перевіряємо, чи руки схрещені. 
+                    # Check if arms are crossed. 
                     if (hand1_label == "Left" and hand1_x > hand2_x) or (hand2_label == "Left" and hand2_x > hand1_x):
                         cross_counter += 1
-                        print(f"[VISION] Crossed Arms detected! Counter: {cross_counter}/45")
+                        print(lang.get("vision.crossed_arms", count=cross_counter, total=45))
                     else:
-                        cross_counter = max(0, cross_counter - 2) # Плавне спадання
+                        cross_counter = max(0, cross_counter - 2) # Smooth decay
                         
                     if cross_counter > 45:
-                        print("💤 [VISION] Sleep Gesture detected. Shutting down Vision Manager to save CPU.")
+                        print(lang.get("vision.sleep_detected"))
                         # Наступний цикл не виконається, потоки завершаться
                         self.is_running = False
                         break
@@ -198,7 +199,7 @@ class VisionManager:
                     cross_counter = max(0, cross_counter - 1)
                 # -------------------------------------------------------------
                 
-                # Обробляємо першу виявлену руку для жестів миші / кліків
+                # Process the first detected hand for mouse gestures / clicks
                 hand_lms = results.multi_hand_landmarks[0]
                 lm_list = []
                 for id, lm in enumerate(hand_lms.landmark):
@@ -206,7 +207,7 @@ class VisionManager:
                      lm_list.append([id, cx, cy])
                 
                 if lm_list:
-                    # Перевірка на кулак (Пауза)
+                    # Check for fist (Pause)
                         if self._is_fist(lm_list):
                             self.state = "PAUSED"
                         elif self._is_l_shape(lm_list):
@@ -228,10 +229,10 @@ class VisionManager:
                             screen_x = np.interp(self.smooth_x, (self.margin_x, w - self.margin_x), (0, self.screen_w))
                             screen_y = np.interp(self.smooth_y, (self.margin_y, h - self.margin_y), (0, self.screen_h))
                             
-                            # Перевірка віртуальних зон (Virtual Zones 2.0)
-                            if self.smooth_y < h * 0.20: # Верхня зона гучності
+                            # Check virtual zones (Virtual Zones 2.0)
+                            if self.smooth_y < h * 0.20: # Top volume zone
                                 self.state = "VOLUME_CONTROL"
-                                if time.time() - self.last_screenshot_time > 0.1: # Невеликий кулдаун
+                                if time.time() - self.last_screenshot_time > 0.1: # Small cooldown
                                     if self.smooth_x > self.prev_x + 5: 
                                         self._queue_action("KEY_PRESS", 'volumeup')
                                         self.last_screenshot_time = time.time()
@@ -239,26 +240,26 @@ class VisionManager:
                                         self._queue_action("KEY_PRESS", 'volumedown')
                                         self.last_screenshot_time = time.time()
                                     
-                            elif self.smooth_y > h * 0.80: # Нижня зона медіа
+                            elif self.smooth_y > h * 0.80: # Bottom media zone
                                 self.state = "MEDIA_CONTROL"
                                 if dist_pinch < 40 and time.time() - self.last_screenshot_time > 1.0: # Pinch = Play/Pause
                                     self._queue_action("KEY_PRESS", 'playpause')
                                     self.last_screenshot_time = time.time() 
                                 elif time.time() - self.last_screenshot_time > 0.5:
-                                    if self.smooth_x > self.prev_x + 15: # Свайп вправо
+                                    if self.smooth_x > self.prev_x + 15: # Swipe right
                                         self._queue_action("KEY_PRESS", 'nexttrack')
                                         self.last_screenshot_time = time.time()
-                                    elif self.smooth_x < self.prev_x - 15: # Свайп вліво
+                                    elif self.smooth_x < self.prev_x - 15: # Swipe left
                                         self._queue_action("KEY_PRESS", 'prevtrack')
                                         self.last_screenshot_time = time.time()
                                     
-                            else: # Центральна зона (Керування мишею)
+                            else: # Central zone (Mouse Control)
                                 self.state = "CLICK" if dist_pinch < 40 else "ACTIVE"
                                 self._queue_action("UPDATE_CURSOR", (screen_x, screen_y, self.state == "CLICK"))
                             
                             self.prev_x, self.prev_y = self.smooth_x, self.smooth_y
                             
-                            # Намалюємо курсор
+                            # Draw cursor
                             cv2.circle(img, (self.smooth_x, self.smooth_y), 15, (0, 255, 0) if self.state == "ACTIVE" else (0, 0, 255), cv2.FILLED)
             else:
                 self.state = "IDLE"
@@ -306,28 +307,28 @@ class VisionManager:
         cv2.putText(img, f"STATE: {self.state}", (20, h - 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
         
         # Camera Indicator (Top Right - Privacy/Security Feature)
-        indicator_text = "LIVE" if self.state != "IDLE" else "IDLE"
+        indicator_text = lang.get("vision.live_status") if self.state != "IDLE" else lang.get("vision.idle_status")
         indicator_color = (0, 255, 0) if self.state != "IDLE" else (100, 100, 100)
         
-        # Розраховуємо ширину тексту для вирівнювання по правому краю
+        # Calculate text width for right alignment
         (text_w, text_h), _ = cv2.getTextSize(indicator_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)
         padding_x = 20
         padding_y = 10
         top_right_x = w - text_w - (padding_x * 2) - 10
         top_right_y = 10
         
-        # Малюємо фон індикатора
+        # Draw indicator background
         cv2.rectangle(img, 
             (top_right_x, top_right_y), 
             (top_right_x + text_w + (padding_x * 2), top_right_y + text_h + (padding_y * 2)), 
             (0, 0, 0), cv2.FILLED)
             
-        # Малюємо кольорову крапку-індикатор
+        # Draw colored indicator dot
         dot_radius = 8
         dot_center = (top_right_x + padding_x + dot_radius, top_right_y + padding_y + text_h // 2)
         cv2.circle(img, dot_center, dot_radius, indicator_color, cv2.FILLED)
         
-        # Малюємо текст
+        # Draw text
         text_start_x = top_right_x + padding_x + (dot_radius * 2) + 10
         text_start_y = top_right_y + padding_y + text_h
         cv2.putText(img, indicator_text, (text_start_x, text_start_y), cv2.FONT_HERSHEY_SIMPLEX, 1.5, indicator_color, 3)
@@ -339,7 +340,7 @@ class VisionManager:
         except: pass
 
     def _action_worker(self):
-        # Налаштування PyAutoGUI
+        # Configure PyAutoGUI
         pyautogui.FAILSAFE = False
         click_cooldown = 0
         
@@ -361,9 +362,9 @@ class VisionManager:
                     import os
                     from datetime import datetime
                     import json
-                    print("[VISION] Жест 'L' розпізнано! Роблю скріншот...")
+                    print(lang.get("vision.l_gesture"))
                     
-                    # 1. Зберігаємо файл
+                    # 1. Save file
                     screenshot_img = pyautogui.screenshot()
                     memories_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "memories", "screenshots")
                     os.makedirs(memories_dir, exist_ok=True)
@@ -372,22 +373,22 @@ class VisionManager:
                     file_name = f"vision_{timestamp}.png"
                     file_path = os.path.join(memories_dir, file_name)
                     screenshot_img.save(file_path)
-                    print(f"✅ Скріншот збережено: {file_path}")
+                    print(lang.get("vision.screenshot_saved", path=file_path))
                     
-                    # 2. Smart Logging (MCP-логіка збереження логу)
+                    # 2. Smart Logging (MCP-logic for saving log)
                     log_data = {
                         "action": "screenshot_taken",
                         "timestamp": timestamp,
                         "trigger": "visual_gesture_L",
                         "file": file_name,
-                        "description": "Скріншот зроблено за візуальною командою користувача."
+                        "description": "Screenshot taken by user's visual command."
                     }
                     log_path = os.path.join(memories_dir, "last_action.json")
                     with open(log_path, 'w', encoding='utf-8') as f:
                         json.dump(log_data, f, ensure_ascii=False, indent=2)
-                    print(f"📝 Лог збережено в: last_action.json")
+                    print(lang.get("vision.log_saved"))
                     
-                    # 3. Відправляємо в Telegram
+                    # 3. Send to Telegram
                     try:
                         import sys
                         root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -395,15 +396,15 @@ class VisionManager:
                             sys.path.append(root_path)
                         from Atlas_v2.agent_skills.telegram_bridge.manifest import send_telegram_file
                         
-                        caption = f"📸 ATLAS: Скріншот екрана (Gesture 'L')\n\nJSON Лог:\n{json.dumps(log_data, ensure_ascii=False, indent=2)}"
+                        caption = lang.get("vision.tg_caption") + f"\n\nJSON Log:\n{json.dumps(log_data, ensure_ascii=False, indent=2)}"
                         send_telegram_file(file_path, caption=caption)
                     except Exception as ex:
-                        print(f"⚠️ Не вдалося відправити скріншот в Telegram: {ex}")
+                        print(lang.get("vision.tg_error", error=ex))
             except Exception as e:
-                print(f"⚠️ [ActionWorker Error]: {e}")
+                print(lang.get("vision.action_error", error=e))
 
 if __name__ == "__main__":
-    print("[VISION] Спроба запуску: logic.py напряму...")
+    print(lang.get("vision.start_direct"))
     vision = VisionManager()
     vision.start()
     
@@ -411,5 +412,5 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("🛑 Зупиняю VisionManager...")
+        print(lang.get("vision.stopping"))
         vision.stop()

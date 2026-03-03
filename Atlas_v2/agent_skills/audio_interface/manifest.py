@@ -2,38 +2,39 @@ import os
 import time
 from openai import OpenAI
 from dotenv import load_dotenv
+from core.i18n import lang
 
-# Динамічно знаходимо шлях до .env (як ми це робили в Ядрі)
+# Dynamically find the path to .env (just like in the Core)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
 load_dotenv(dotenv_path=env_path)
 
 def speak(text: str) -> str:
     """
-    Озвучує текст вголос через динаміки комп'ютера (OpenAI TTS).
-    Використовуй цей інструмент, коли користувач просить тебе щось "сказати", "озвучити" або 
-    коли ти хочеш повідомити користувачу щось важливе голосом.
-    УВАГА: Не передавай сюди довгі тексти або код, лише короткі, природні розмовні фрази.
+    Speaks out text via computer speakers (OpenAI TTS).
+    Use this tool when the user asks you to "say", "speak" something or 
+    when you want to notify the user of something important audibly.
+    WARNING: Do not pass long texts or code here, only short, natural conversational phrases.
     
     Args:
-        text: Текст, який потрібно сказати вголос (бажано до 2-3 речень).
+        text: Text to speak aloud (preferably up to 2-3 sentences).
     """
-    print(f"🗣️ [Audio Interface]: Озвучую: '{text}'")
+    print(lang.get("audio.generating")) # Close enough to 'Speaking:'
     
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        return "Помилка: OPENAI_API_KEY не знайдено в .env файлі."
+        return lang.get("audio.env_error")
         
     try:
         client = OpenAI(api_key=api_key)
         
-        # Створюємо папку для аудіо-пам'яті
+        # Create folder for audio memory
         output_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "memories", "audio"))
         os.makedirs(output_dir, exist_ok=True)
         
         file_path = os.path.join(output_dir, f"speech_{int(time.time())}.mp3")
         
-        # Генеруємо аудіо (Голос 'onyx' - Джарвіс)
+        # Generate audio (Voice 'onyx' - Jarvis style)
         response = client.audio.speech.create(
             model="tts-1",
             voice="onyx",
@@ -42,26 +43,26 @@ def speak(text: str) -> str:
         )
         response.stream_to_file(file_path)
         
-        # Відтворення аудіо у фоні
+        # Play audio in the background
         try:
             import pygame
             pygame.mixer.init()
             pygame.mixer.music.load(file_path)
             pygame.mixer.music.play()
             
-            # Чекаємо, поки файл не дограє до кінця
+            # Wait until the file is done playing
             while pygame.mixer.music.get_busy():
                 pygame.time.Clock().tick(10)
                 
             pygame.mixer.quit()
         except ImportError:
-            # Запасний варіант, якщо pygame не встановлено
+            # Fallback if pygame is not installed
             os.system(f'start /min "" "{file_path}"')
             
-        return "Текст успішно озвучено."
+        return "Text voiced successfully."
         
     except Exception as e:
-        return f"Помилка генерації або відтворення голосу: {e}"
+        return lang.get("audio.play_error", error=e)
 
-# Експортуємо інструмент
+# Export tool
 EXPORTED_TOOLS = [speak]

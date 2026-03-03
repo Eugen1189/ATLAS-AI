@@ -1,33 +1,34 @@
 import os
+from core.i18n import lang
 
-# Цей опис (docstring) критично важливий! Gemini читає його.
+# This description (docstring) is critically important! Gemini reads it.
 def open_workspace(project_name: str) -> str:
     """
-    Шукає проект на диску C: та відкриває його в Cursor IDE і браузері.
-    Використовуй цей інструмент, коли користувач просить "відкрити проект", 
-    "розгорнути робочу форму", "підготувати середовище" для певного проекту.
+    Searches for a project on the C: drive and opens it in Cursor IDE and the browser.
+    Use this tool when the user asks to "open project", 
+    "deploy workspace", or "prepare environment" for a specific project.
     
     Args:
-        project_name: Назва проекту для пошуку (наприклад, 'SystemCOO', 'AuraMail').
+        project_name: Project name to search for (e.g., 'SystemCOO', 'AuraMail').
     """
-    print(f"⚙️ [Workspace Skill]: Шукаю проект '{project_name}'...")
+    print(lang.get("workspace.searching", project=project_name))
     
-    # Наш сьогоднішній оптимізований пошук
+    # Our optimized search for today
     root_dir = "C:\\Users\\Eugen1189\\"
     for r, d, f in os.walk(root_dir):
         if project_name.lower() in [dir.lower() for dir in d]:
             target_path = os.path.join(r, project_name)
             
-            # Відкриваємо папку та Cursor
+            # Open the folder and Cursor
             os.startfile(target_path)
             os.system(f'cursor "{target_path}"')
             
-            # Можна додати відкриття Perplexity, як ми робили
+            # Can add opening Perplexity, as we did
             os.system('start https://www.perplexity.ai/')
             
-            return f"Успішно: Проект {project_name} знайдено та розгорнуто за шляхом {target_path}."
+            return lang.get("workspace.success", project=project_name, path=target_path)
             
-    return f"Помилка: Проект {project_name} не знайдено на диску C:."
+    return lang.get("workspace.not_found", project=project_name)
 
-# Експортуємо список інструментів, які цей скіл надає Ядру
+# Export the list of tools this skill provides to the Core
 EXPORTED_TOOLS = [open_workspace]

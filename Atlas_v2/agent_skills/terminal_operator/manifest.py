@@ -1,29 +1,30 @@
 import subprocess
 import os
+from core.i18n import lang
 
 def execute_command(command: str) -> str:
     """
-    Виконує системну команду в терміналі (PowerShell/CMD) та повертає результат (stdout/stderr).
-    Використовуй цей інструмент для:
-    1. Запуску скриптів (наприклад, 'python test.py').
-    2. Встановлення пакетів (наприклад, 'pip install requests').
-    3. Роботи з Git ('git status', 'git add .', 'git commit -m "..."').
-    4. Перевірки системи ('ping google.com', 'ipconfig', 'dir').
+    Executes a system command in the terminal (PowerShell/CMD) and returns the result (stdout/stderr).
+    Use this tool for:
+    1. Running scripts (e.g., 'python test.py').
+    2. Installing packages (e.g., 'pip install requests').
+    3. Working with Git ('git status', 'git add .', 'git commit -m "..."').
+    4. System inquiries ('ping google.com', 'ipconfig', 'dir').
     
-    УВАГА: Ніколи не виконуй деструктивні команди (format, del /f /s /q) без прямого дозволу користувача.
+    WARNING: Never execute destructive commands (format, del /f /s /q) without the direct permission of the user.
     
     Args:
-        command: Команда для виконання в терміналі.
+        command: Command to execute in the terminal.
     """
-    print(f"⚡ [Terminal Operator]: Виконую команду: `{command}`")
+    print(lang.get("terminal.executing", command=command))
     try:
-        # Виконуємо команду і перехоплюємо вивід
+        # Execute the command and capture output
         result = subprocess.run(
             command, 
             shell=True, 
             capture_output=True, 
             text=True, 
-            # Працюємо в директорії кореня проекту (піднімаємося на 2 рівні від папки скіла)
+            # Work in the project root directory (go up 2 levels from the skill folder)
             cwd=os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         )
         
@@ -31,12 +32,12 @@ def execute_command(command: str) -> str:
         error = result.stderr.strip()
         
         if result.returncode == 0:
-            return f"✅ Команда виконана успішно.\nВивід:\n{output if output else 'Без текстового виводу.'}"
+            return lang.get("terminal.success", output=output if output else lang.get("terminal.no_output"))
         else:
-            return f"❌ Команда завершилася з помилкою (Код {result.returncode}).\nПомилка:\n{error}\nЧастковий вивід:\n{output}"
+            return lang.get("terminal.failed", code=result.returncode, error=error, output=output)
             
     except Exception as e:
-        return f"Критична помилка під час виконання команди: {e}"
+        return lang.get("terminal.crit_error", error=e)
 
-# Експортуємо інструмент
+# Export tool
 EXPORTED_TOOLS = [execute_command]

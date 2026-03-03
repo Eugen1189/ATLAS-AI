@@ -1,1 +1,1 @@
-# порожній ініт для розпізнавання модуля
+# empty init for module recognition

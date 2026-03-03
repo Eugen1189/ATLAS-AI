@@ -3,13 +3,14 @@ import requests
 import time
 import threading
 from dotenv import load_dotenv
+from core.i18n import lang
 
-# Глобальний словник для зберігання очікуваних підтверджень
-# Ключ: message_id, Значення: {"event": threading.Event(), "result": None}
+# Global dictionary to store pending confirmations
+# Key: message_id, Value: {"event": threading.Event(), "result": None}
 PENDING_CONFIRMATIONS = {}
 
 def _poll_telegram(atlas_core):
-    """Фоновий процес для Telegram"""
+    """Background process for Telegram"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
     load_dotenv(dotenv_path=env_path)
@@ -18,10 +19,10 @@ def _poll_telegram(atlas_core):
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     
     if not bot_token or not chat_id:
-        print("⚠️ [Telegram Listener]: Ключі не знайдено.")
+        print(lang.get("telegram.keys_not_found"))
         return
 
-    print("📡 [Telegram Listener]: Починаю прослуховування вхідних повідомлень...")
+    print(lang.get("telegram.starting_listen"))
     offset = 0
     send_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
@@ -35,7 +36,7 @@ def _poll_telegram(atlas_core):
                 for update in response["result"]:
                     offset = update["update_id"] + 1
                     
-                    # Обробка callback_query (натискання кнопок)
+                    # Process callback_query (button clicks)
                     if "callback_query" in update:
                         cb_query = update["callback_query"]
                         cb_data = cb_query.get("data")
@@ -43,21 +44,21 @@ def _poll_telegram(atlas_core):
                         
                         if cb_msg and str(cb_msg.get("chat", {}).get("id")) == str(chat_id):
                             msg_id = cb_msg.get("message_id")
-                            print(f"\n📱 [Telegram Вхідне]: Натиснуто кнопку: {cb_data}")
+                            print(lang.get("telegram.incoming_btn", btn=cb_data))
                             
-                            # Відповідаємо Telegram, що ми прийняли натискання (щоб кнопка не 'висіла')
+                            # Answer Telegram that we received the click (so the button doesn't 'hang')
                             cb_id = cb_query.get("id")
                             requests.post(f"https://api.telegram.org/bot{bot_token}/answerCallbackQuery", json={"callback_query_id": cb_id})
                             
                             if msg_id in PENDING_CONFIRMATIONS:
                                 if cb_data == "confirm_yes":
                                     PENDING_CONFIRMATIONS[msg_id]["result"] = True
-                                    new_text = f"{cb_msg.get('text')}\n\n✅ <b>Підтверджено</b>"
+                                    new_text = f"{cb_msg.get('text')}\n\n" + lang.get("telegram.confirm_yes_text")
                                 elif cb_data == "confirm_no":
                                     PENDING_CONFIRMATIONS[msg_id]["result"] = False
-                                    new_text = f"{cb_msg.get('text')}\n\n❌ <b>Відхилено</b>"
+                                    new_text = f"{cb_msg.get('text')}\n\n" + lang.get("telegram.confirm_no_text")
                                 
-                                # Забираємо кнопки і оновлюємо текст
+                                # Remove buttons and update text
                                 requests.post(f"https://api.telegram.org/bot{bot_token}/editMessageText", json={
                                     "chat_id": chat_id,
                                     "message_id": msg_id,
@@ -66,7 +67,7 @@ def _poll_telegram(atlas_core):
                                     "parse_mode": "HTML"
                                 })
                                 
-                                # Сповіщаємо потік, що чекає на відповідь
+                                # Notify the thread waiting for the answer
                                 PENDING_CONFIRMATIONS[msg_id]["event"].set()
                             continue
                             
@@ -76,45 +77,45 @@ def _poll_telegram(atlas_core):
                         text = message.get("text")
                         voice = message.get("voice")
                         
-                        # Обробка голосових повідомлень
+                        # Process voice messages
                         if voice:
-                            print(f"\n📱 [Telegram Вхідне]: 🎤 Голосове повідомлення (поки не підтримується)")
+                            print(lang.get("telegram.incoming_voice"))
                             requests.post(send_url, json={
                                 "chat_id": chat_id, 
-                                "text": "🤖 Прийняв голосове повідомлення! Але поки мій аудіо-модуль для Telegram монтується, будь ласка, напиши текстом."
+                                "text": lang.get("telegram.voice_response")
                             })
-                            print("\n👤 Ви (текст або ENTER для мікрофона): ", end="", flush=True)
+                            print(lang.get("system.prompt"), end="", flush=True)
                             continue
                             
-                        # Обробка текстових повідомлень
+                        # Process text messages
                         if text:
-                            print(f"\n📱 [Telegram Вхідне]: {text}")
+                            print(lang.get("telegram.incoming_text", text=text))
                             
                             try:
-                                context_prompt = f"(Повідомлення з Telegram): {text}"
+                                context_prompt = f"(Telegram message): {text}"
                                 reply = atlas_core.think(context_prompt)
                                 
-                                print(f"🤖 [Telegram Вихідне]: Відправляю відповідь на телефон...")
+                                print(lang.get("telegram.outgoing_reply"))
                                 requests.post(send_url, json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"})
                             
                             except Exception as core_error:
-                                # ТЕПЕР МИ БАЧИМО ПОМИЛКУ ЛІМІТІВ!
+                                # NOW WE CAN SEE LIMIT ERRORS!
                                 error_str = str(core_error)
-                                print(f"\n❌ [Telegram Помилка Ядра]: {error_str}")
+                                print(lang.get("telegram.core_error", error=error_str))
                                 
                                 if "429" in error_str or "Quota" in error_str:
-                                    msg = "⚠️ Вибач, Євгене. Google тимчасово заблокував мої API-квоти. Чекаю на оновлення лімітів."
+                                    msg = lang.get("telegram.quota_error")
                                 else:
-                                    msg = f"⚠️ Системна помилка Ядра: {error_str[:50]}..."
+                                    msg = lang.get("telegram.sys_error", error=error_str[:50])
                                     
                                 requests.post(send_url, json={"chat_id": chat_id, "text": msg})
                                 
-                            print("\n👤 Ви (текст або ENTER для мікрофона): ", end="", flush=True)
+                            print(lang.get("system.prompt"), end="", flush=True)
                             
         except requests.exceptions.RequestException:
-            time.sleep(5) # Ігноруємо обриви інтернету
+            time.sleep(5) # Ignore internet connection drops
         except Exception as e:
-            print(f"\n❌ [Telegram Критична Помилка]: {e}")
+            print(lang.get("telegram.crit_error", error=e))
             time.sleep(5)
         
         time.sleep(1)

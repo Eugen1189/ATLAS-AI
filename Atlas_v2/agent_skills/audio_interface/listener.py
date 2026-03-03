@@ -1,33 +1,34 @@
 import speech_recognition as sr
+from core.i18n import lang
 
 def listen_command() -> str:
     """
-    Слухає мікрофон і перетворює голос на текст.
-    Це не інструмент для LLM, це функція для main.py.
+    Listens to the microphone and converts voice to text.
+    This is not an LLM tool, this is a function for main.py.
     """
     recognizer = sr.Recognizer()
     
     with sr.Microphone() as source:
-        print("\n🎤 [Audio Interface]: Калібрую фоновий шум (1 сек)...")
+        print(lang.get("audio.listening_done")) # Calibrating
         recognizer.adjust_for_ambient_noise(source, duration=1)
         
-        print("🟢 [Audio Interface]: Говори! Я тебе слухаю...")
+        print(lang.get("audio.listening_start"))
         try:
-            # Чекаємо максимум 5 секунд на початок фрази, і максимум 15 секунд на саму фразу
+            # Wait max 5 seconds for phrase start, and max 15 seconds for the phrase itself
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=15)
             
-            print("⏳ [Audio Interface]: Розпізнаю текст...")
-            # Використовуємо Google Speech Recognition (можна вказати 'uk-UA' або 'en-US')
+            print(lang.get("audio.listening_done"))
+            # Use Google Speech Recognition (can specify 'uk-UA' or 'en-US')
             text = recognizer.recognize_google(audio, language="uk-UA")
             
             return text
             
         except sr.WaitTimeoutError:
-            print("⚠️ [Audio Interface]: Тиша. Переходжу в режим очікування.")
+            print(lang.get("audio.listening_done")) # Silence -> done/idle
             return ""
         except sr.UnknownValueError:
-            print("⚠️ [Audio Interface]: Не зміг розпізнати слова. Повтори, будь ласка.")
+            print(lang.get("audio.recognition_error"))
             return ""
         except Exception as e:
-            print(f"❌ [Audio Interface]: Системна помилка мікрофона: {e}")
+            print(lang.get("audio.recording_error", error=e))
             return ""

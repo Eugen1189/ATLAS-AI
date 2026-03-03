@@ -13,35 +13,35 @@ class MCPBridge:
         self.server_processes = {}
 
     def start_mcp_filesystem(self):
-        """Прямий запуск файлового сервера через subprocess 
-        для використання всередині Vision Eye без необхідності асинхронного ClientSession"""
+        """Direct spawn of filesystem server via subprocess 
+        for use inside Vision Eye without requiring async ClientSession"""
         base_path = "C:/Projects/Atlas/memories"
         
-        # Використовуємо абсолютний шлях до npx, оскільки Windows PATH може не встигнути оновитися
+        # Use absolute path for npx since Windows PATH might not update in time
         npx_path = "C:\\Program Files\\nodejs\\npx.cmd"
         if not os.path.exists(npx_path):
-            npx_path = "npx" # Фолбек на звичайну змінну середовища
+            npx_path = "npx" # Fallback to standard env variable
             
-        # Запускаємо через shell=True, оскільки npx це CMD скрипт в Windows
+        # Run via shell=True because npx is a CMD script on Windows
         cmd = [npx_path, "-y", "@modelcontextprotocol/server-filesystem", base_path]
         
-        # Запуск у фоні
+        # Run in background
         try:
             process = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
             )
-            print(f"[MCP] Filesystem Server запущенний (Subprocess) для {base_path}")
+            print(f"[MCP] Filesystem Server started (Subprocess) for {base_path}")
             self.server_processes['filesystem_subprocess'] = process
             return process
         except Exception as e:
-            print(f"[MCP] Помилка запуску Filesystem Server: {e}")
+            print(f"[MCP] Error starting Filesystem Server: {e}")
             return None
 
     async def connect_from_config(self):
-        """Читає конфіг та підключає всі описані сервери"""
+        """Reads config and connects all described servers"""
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
         if not os.path.exists(config_path):
-            print("⚠️ [MCP Hub]: config.json не знайдено.")
+            print("⚠️ [MCP Hub]: config.json not found.")
             return
 
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -53,7 +53,7 @@ class MCPBridge:
             args = details.get("args", [])
             env = details.get("env", None)
             
-            # Додаємо змінні середовища, якщо вони є
+            # Add environment variables if any
             if env:
                 sys_env = os.environ.copy()
                 for k, v in env.items():
@@ -64,8 +64,8 @@ class MCPBridge:
             await self.connect_to_server(name, command, args, env)
 
     async def connect_to_server(self, name, command, args, env=None):
-        """Підключення до конкретного MCP сервера та збереження сесії відкритою"""
-        print(f"🔄 [MCP Hub]: Спроба підключення до {name} ({command} {' '.join(args)})...")
+        """Connects to a specific MCP server and keeps the session open"""
+        print(f"🔄 [MCP Hub]: Expected connection to {name} ({command} {' '.join(args)})...")
         server_params = StdioServerParameters(command=command, args=args, env=env)
         
         try:
@@ -74,20 +74,20 @@ class MCPBridge:
             await session.initialize()
             
             self.sessions[name] = session
-            print(f"✅ [MCP Hub]: Підключено до {name}")
+            print(f"✅ [MCP Hub]: Connected to {name}")
             return True
         except Exception as e:
-            print(f"❌ [MCP Hub]: Не вдалося підключитися до {name}. Перевірте чи встановлено {command}.")
-            print(f"   Деталі: {e}")
+            print(f"❌ [MCP Hub]: Failed to connect to {name}. Check if {command} is installed.")
+            print(f"   Details: {e}")
             return False
 
     async def shutdown(self):
-        """Закриття всіх з'єднань MCP"""
+        """Close all MCP connections"""
         await self.exit_stack.aclose()
         self.sessions.clear()
-        print("🛑 [MCP Hub]: Всі сесії закрито.")
+        print("🛑 [MCP Hub]: All sessions closed.")
 
-# Глобальний інстанс для використання в інших модулях (наприклад, Vision)
+# Global instance for use in other modules (e.g. Vision)
 _bridge_instance = None
 
 def get_bridge():

@@ -1,14 +1,15 @@
 import sqlite3
 import os
 from datetime import datetime
+from core.i18n import lang
 
-# Визначаємо шлях до бази даних у папці memories
+# Define path to the database in the memories folder
 current_dir = os.path.dirname(os.path.abspath(__file__))
 db_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "memories"))
 os.makedirs(db_dir, exist_ok=True)
 DB_PATH = os.path.join(db_dir, "atlas_memory.db")
 
-# Автоматичне створення таблиці при першому запуску
+# Automatic table creation on first launch
 def _init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -27,15 +28,15 @@ _init_db()
 
 def save_to_memory(topic: str, fact: str) -> str:
     """
-    Зберігає важливий факт, налаштування або преференцію користувача в довгострокову пам'ять.
-    Використовуй цей інструмент, коли користувач просить тебе щось запам'ятати на майбутнє, 
-    або коли ти дізнаєшся важливу деталь (наприклад, його ім'я, улюблену технологію, шлях до нового проекту).
+    Saves an important fact, setting, or user preference into long-term memory.
+    Use this tool when the user asks you to remember something for the future,
+    or when you learn an important detail (e.g., their name, favorite tech, path to new project).
     
     Args:
-        topic: Короткий тег або категорія (наприклад, 'User Preference', 'Project Path', 'Fact').
-        fact: Сам факт, який потрібно запам'ятати (наприклад, 'Користувач любить темну тему', 'Шлях до проекту Х: C:\\...').
+        topic: A short tag or category (e.g., 'User Preference', 'Project Path', 'Fact').
+        fact: The fact itself to be remembered (e.g., 'User likes dark theme', 'Project X path: C:\\...').
     """
-    print(f"🧠 [Memory]: Запам'ятовую факт про '{topic}'...")
+    print(lang.get("memory.remembering", topic=topic))
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -45,24 +46,24 @@ def save_to_memory(topic: str, fact: str) -> str:
         )
         conn.commit()
         conn.close()
-        return f"Факт про '{topic}' успішно назавжди збережено в довгострокову пам'ять."
+        return lang.get("memory.fact_saved", topic=topic)
     except Exception as e:
-        return f"Помилка збереження в пам'ять: {e}"
+        return lang.get("memory.save_error", error=e)
 
 def search_memory(query: str) -> str:
     """
-    Шукає інформацію в довгостроковій пам'яті за ключовим словом або темою.
-    Використовуй цей інструмент ПЕРЕД тим, як сказати "Я не знаю" або "У мене немає доступу", 
-    щоб перевірити, чи не розповідав тобі користувач про це раніше.
+    Searches for information in long-term memory by keyword or topic.
+    Use this tool BEFORE saying "I don't know" or "I don't have access",
+    to check if the user has told you about this before.
     
     Args:
-        query: Ключове слово для пошуку (наприклад, 'AuraMail', 'ім'я', 'шлях').
+        query: Keyword for search (e.g., 'AuraMail', 'name', 'path').
     """
-    print(f"🧠 [Memory]: Шукаю в архівах згадки про '{query}'...")
+    print(lang.get("memory.searching", query=query))
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        # Шукаємо збіги і в темах, і в самих фактах
+        # Search for matches in both topics and facts
         cursor.execute(
             "SELECT topic, fact, timestamp FROM memory WHERE topic LIKE ? OR fact LIKE ?", 
             (f"%{query}%", f"%{query}%")
@@ -71,14 +72,14 @@ def search_memory(query: str) -> str:
         conn.close()
         
         if not results:
-            return f"В архівах пам'яті не знайдено нічого за запитом '{query}'."
+            return lang.get("memory.nothing_found", query=query)
         
-        response = "Знайдено в пам'яті:\n"
+        response = lang.get("memory.found")
         for row in results:
-            response += f"- [{row[0]}] {row[1]} (додано: {row[2]})\n"
+            response += f"- [{row[0]}] {row[1]} (added: {row[2]})\n"
         return response
     except Exception as e:
-        return f"Помилка пошуку в пам'яті: {e}"
+        return lang.get("memory.search_error", error=e)
 
-# Експортуємо інструменти для Оркестратора
+# Export tools for Orchestrator
 EXPORTED_TOOLS = [save_to_memory, search_memory]

@@ -2,31 +2,32 @@ import os
 import requests
 from dotenv import load_dotenv
 from .google_logic import google_research
+from core.i18n import lang
 
-# Динамічно знаходимо шлях до .env
+# Dynamically find path to .env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
 load_dotenv(dotenv_path=env_path)
 
 def perplexity_search(query: str) -> str:
     """
-    Виконує глибокий пошук в інтернеті через Perplexity AI. 
-    Цей інструмент обходить блокування сайтів і повертає синтезовану відповідь з актуальними фактами.
-    Використовуй його для пошуку документації, новин або технічних рішень.
+    Performs a deep web search via Perplexity AI. 
+    This tool bypasses website blocks and returns a synthesized response with up-to-date facts.
+    Use it to search for documentation, news, or technical solutions.
     
     Args:
-        query: Пошуковий запит користувача.
+        query: User's search query.
     """
-    print(f"🌐 [Perplexity Research]: Глибокий пошук запиту: '{query}'")
+    print(lang.get("web.searching_deep", query=query))
     
     api_key = os.getenv("PERPLEXITY_API_KEY")
     if not api_key:
-        return "Помилка: PERPLEXITY_API_KEY не знайдено в .env."
+        return lang.get("web.env_error")
 
     url = "https://api.perplexity.ai/chat/completions"
     
     payload = {
-        "model": "sonar", # Найсвіжіша модель для пошуку
+        "model": "sonar", # Freshest model for search
         "messages": [
             {"role": "system", "content": "Be precise, concise and provide actual web information."},
             {"role": "user", "content": query}
@@ -42,11 +43,11 @@ def perplexity_search(query: str) -> str:
         response = requests.post(url, json=payload, headers=headers, timeout=20)
         if response.status_code == 200:
             data = response.json()
-            return f"Результати пошуку через Perplexity:\n{data['choices'][0]['message']['content']}"
+            return f"{lang.get('web.results_prep')}\n{data['choices'][0]['message']['content']}"
         else:
-            return f"Помилка Perplexity API (Код {response.status_code}): {response.text}"
+            return lang.get("web.api_error", code=response.status_code, error=response.text)
     except Exception as e:
-        return f"Критична помилка під час пошуку: {e}"
+        return lang.get("web.crit_error", error=e)
 
-# Експортуємо інструмент
+# Export tool
 EXPORTED_TOOLS = [perplexity_search, google_research]

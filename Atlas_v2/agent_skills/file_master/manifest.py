@@ -1,65 +1,66 @@
 import os
+from core.i18n import lang
 
 def list_directory(path: str = ".") -> str:
     """
-    Показує вміст вказаної папки (файли та підпапки).
-    Використовуй цей інструмент, коли потрібно дізнатися структуру проекту, 
-    знайти потрібний файл або перевірити, чи існує директорія.
+    Lists the contents of the specified directory (files and subfolders).
+    Use this tool when you need to understand project structure,
+    find a specific file, or check if a directory exists.
     
     Args:
-        path: Шлях до папки (за замовчуванням поточна директорія).
+        path: Path to the folder (defaults to current directory).
     """
-    print(f"📂 [File Master]: Сканую директорію: {path}")
+    print(lang.get("file_master.reading_dir", path=path))
     try:
         if not os.path.exists(path):
-            return f"Помилка: Шлях {path} не існує."
+            return lang.get("file_master.dir_not_found", path=path)
         
         items = os.listdir(path)
-        result = f"Вміст папки '{path}':\n"
+        result = f"Contents of folder '{path}':\n"
         for item in items:
             item_path = os.path.join(path, item)
-            item_type = "[ПАПКА]" if os.path.isdir(item_path) else "[ФАЙЛ]"
+            item_type = "[DIR ]" if os.path.isdir(item_path) else "[FILE]"
             result += f"- {item_type} {item}\n"
         return result
     except Exception as e:
-        return f"Помилка доступу до папки: {e}"
+        return lang.get("file_master.read_error", error=e)
 
 def read_file(filepath: str) -> str:
     """
-    Читає вміст текстового файлу або файлу з кодом (.py, .txt, .md, .json тощо).
-    Використовуй цей інструмент, щоб проаналізувати існуючий код перед тим, як пропонувати зміни.
+    Reads the content of a text or code file (.py, .txt, .md, .json etc).
+    Use this tool to analyze existing code before proposing changes.
     
     Args:
-        filepath: Повний або відносний шлях до файлу.
+        filepath: Full or relative path to the file.
     """
-    print(f"📄 [File Master]: Читаю файл: {filepath}")
+    print(lang.get("file_master.reading_file", path=filepath))
     try:
         if not os.path.exists(filepath):
-            return f"Помилка: Файл {filepath} не знайдено."
+            return lang.get("file_master.file_not_found", path=filepath)
             
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
-        return f"--- Початок файлу {filepath} ---\n{content}\n--- Кінець файлу ---"
+        return f"--- Start of file {filepath} ---\n{content}\n--- End of file ---"
     except Exception as e:
-        return f"Помилка читання файлу: {e}"
+        return lang.get("file_master.file_read_error", error=e)
 
 def write_file(filepath: str, content: str) -> str:
     """
-    Створює новий файл або ПОВНІСТЮ перезаписує існуючий заданим текстом/кодом.
-    Використовуй цей інструмент для створення нових скриптів або застосування рефакторингу.
+    Creates a new file or COMPLETELY overwrites an existing one with the given text/code.
+    Use this tool to create new scripts or apply refactoring.
     
     Args:
-        filepath: Шлях, куди зберегти файл.
-        content: Текст або код, який потрібно записати.
+        filepath: Path where to save the file.
+        content: Text or code to write.
     """
-    print(f"✍️ [File Master]: Записую дані у файл: {filepath}")
+    print(lang.get("file_master.writing_file", lines=len(content.splitlines()), path=filepath))
     try:
         os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        return f"Успіх: Дані успішно записані у файл {filepath}."
+        return lang.get("file_master.file_written", bytes=len(content.encode('utf-8')), path=filepath)
     except Exception as e:
-        return f"Помилка запису у файл: {e}"
+        return lang.get("file_master.file_write_error", error=e)
 
-# Експортуємо інструменти для Оркестратора
+# Export tools for Orchestrator
 EXPORTED_TOOLS = [list_directory, read_file, write_file]

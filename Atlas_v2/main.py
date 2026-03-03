@@ -2,50 +2,56 @@ from core.orchestrator import AtlasCore
 import sys
 import os
 
-# Додаємо шлях до Atlas_v2
+if sys.stdout.encoding != 'utf-8':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+
+# Add path to Atlas_v2
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-# Додаємо шлях до кореня проекту (SystemCOO), щоб бачити config.py та інше
+# Add path to project root (SystemCOO) to access config.py and others
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agent_skills.audio_interface.listener import listen_command
 
-# ДОДАЄМО ІМПОРТ ТЕЛЕГРАМ СЛУХАЧА
+# IMPORT i18n
+from core.i18n import lang
+
+# IMPORT TELEGRAM LISTENER
 from agent_skills.telegram_bridge.listener import start_telegram_listener
 
 def boot_sequence():
-    print("🚀 Запуск Atlas V2... (Модульна Архітектура)")
+    print(lang.get("system.welcome"))
     atlas = AtlasCore()
     
-    # ЗАПУСКАЄМО ТЕЛЕГРАМ У ФОНІ, передаючи йому мозок Атласа
+    # START TELEGRAM IN BACKGROUND, passing the Atlas brain to it
     start_telegram_listener(atlas)
     
-    print("\n--- Atlas готовий до роботи ---")
-    print("(Введи текст, або просто натисни ENTER, щоб сказати голосом. Для виходу напиши 'exit')")
+    print(lang.get("system.ready"))
     
     while True:
         try:
-            command = input("\n👤 Ви (текст або ENTER для мікрофона): ").strip()
+            command = input(lang.get("system.prompt")).strip()
             
             if command.lower() in ['exit', 'quit', 'вихід']:
-                print("Вимкнення систем...")
+                print(lang.get("system.shutdown"))
                 break
                 
             if command.lower() == 'status':
                 print("\n📊 [SYSTEM] Vision: ONLINE | MCP: 2 SERVERS ACTIVE | TG: CONNECTED\n")
                 continue
                 
-            # Якщо користувач просто натиснув Enter — вмикаємо мікрофон!
+            # If the user simply pressed Enter - trigger the microphone!
             if command == "":
                 command = listen_command()
-                if not command:  # Якщо нічого не розпізнано, починаємо цикл спочатку
+                if not command:  # If nothing recognized, restart loop
                     continue
-                print(f"🗣️ Ви сказали: {command}")
+                print(lang.get("system.you_said", text=command))
                 
-            # Відправляємо команду (текстову або голосову) в мозок
+            # Send the command (text or voice) to the brain
             response = atlas.think(command)
-            print(f"🤖 Атлас: {response}")
+            print(lang.get("system.atlas_said", text=response))
             
         except Exception as e:
-            print(f"❌ Системна помилка: {e}")
+            print(lang.get("system.sys_error", error=e))
 
 if __name__ == "__main__":
     boot_sequence()
