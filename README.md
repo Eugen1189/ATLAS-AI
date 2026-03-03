@@ -46,7 +46,7 @@ Atlas V2 utilizes a **Dynamic Skill Discovery** system:
 ## 🛠️ Technical Stack
 
 - **Language:** Python 3.11.9
-- **Environment:** Node.js v24.14.0 (for MCP runtimes)
+- **Environment:** Node.js v24.14.0 (for MCP runtimes). *Tested on Node.js v24.14.0 for bleeding-edge MCP support.*
 - **Computer Vision:** MediaPipe 0.10.14, OpenCV 4.13
 - **Automation:** PyAutoGUI
 - **AI Models:** Gemini 2.0 Flash, OpenAI (Voice), Perplexity
@@ -69,3 +69,19 @@ Atlas V2 utilizes a **Dynamic Skill Discovery** system:
    ```bash
    python Atlas_v2/main.py
    ```
+
+---
+
+## 🔮 Roadmap V3 (The "Mind-Blowing" Stuff)
+
+### Phase 1: Visual Overlay (Desktop UI)
+Transitioning from standard terminal outputs to a "Iron Man" style HUD. We will implement a semi-transparent screen overlay (via **PyQt6**) that highlights the "Volume Zone" and "Media Zone" dynamically when your hand enters them, eliminating any guesswork.
+
+### Phase 2: Local Fallback (Autonomous Operation)
+Atlas should never truly sleep if the internet goes down. We will integrate **Ollama (Llama 3)** to serve as a local fallback model for offline execution of hardware and OS-level commands (e.g., "Open Folder", "Volume Down"). 
+
+### Phase 3: Multi-Agent Collaboration
+Creating a hive-mind of specialized agents working in tandem:
+- 🕵️ **Researcher Agent:** Fetches data via Perplexity MCP.
+- 💻 **Coder Agent:** Analyzes and modifies codebases using Filesystem MCP.
+- 📝 **Editor Agent:** Compiles the findings into beautifully formatted Markdown reports.

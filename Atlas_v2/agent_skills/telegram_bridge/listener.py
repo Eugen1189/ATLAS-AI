@@ -4,6 +4,10 @@ import time
 import threading
 from dotenv import load_dotenv
 
+# Глобальний словник для зберігання очікуваних підтверджень
+# Ключ: message_id, Значення: {"event": threading.Event(), "result": None}
+PENDING_CONFIRMATIONS = {}
+
 def _poll_telegram(atlas_core):
     """Фоновий процес для Telegram"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +34,42 @@ def _poll_telegram(atlas_core):
             if response.get("ok"):
                 for update in response["result"]:
                     offset = update["update_id"] + 1
+                    
+                    # Обробка callback_query (натискання кнопок)
+                    if "callback_query" in update:
+                        cb_query = update["callback_query"]
+                        cb_data = cb_query.get("data")
+                        cb_msg = cb_query.get("message")
+                        
+                        if cb_msg and str(cb_msg.get("chat", {}).get("id")) == str(chat_id):
+                            msg_id = cb_msg.get("message_id")
+                            print(f"\n📱 [Telegram Вхідне]: Натиснуто кнопку: {cb_data}")
+                            
+                            # Відповідаємо Telegram, що ми прийняли натискання (щоб кнопка не 'висіла')
+                            cb_id = cb_query.get("id")
+                            requests.post(f"https://api.telegram.org/bot{bot_token}/answerCallbackQuery", json={"callback_query_id": cb_id})
+                            
+                            if msg_id in PENDING_CONFIRMATIONS:
+                                if cb_data == "confirm_yes":
+                                    PENDING_CONFIRMATIONS[msg_id]["result"] = True
+                                    new_text = f"{cb_msg.get('text')}\n\n✅ <b>Підтверджено</b>"
+                                elif cb_data == "confirm_no":
+                                    PENDING_CONFIRMATIONS[msg_id]["result"] = False
+                                    new_text = f"{cb_msg.get('text')}\n\n❌ <b>Відхилено</b>"
+                                
+                                # Забираємо кнопки і оновлюємо текст
+                                requests.post(f"https://api.telegram.org/bot{bot_token}/editMessageText", json={
+                                    "chat_id": chat_id,
+                                    "message_id": msg_id,
+                                    "text": new_text,
+                                    "reply_markup": {"inline_keyboard": []},
+                                    "parse_mode": "HTML"
+                                })
+                                
+                                # Сповіщаємо потік, що чекає на відповідь
+                                PENDING_CONFIRMATIONS[msg_id]["event"].set()
+                            continue
+                            
                     message = update.get("message", {})
                     
                     if str(message.get("chat", {}).get("id")) == str(chat_id):

@@ -53,7 +53,7 @@ class VisionManager:
             self.mp_hands = mp.solutions.hands
             self.hands = self.mp_hands.Hands(
                 static_image_mode=False,
-                max_num_hands=1,
+                max_num_hands=2,
                 min_detection_confidence=0.8,
                 min_tracking_confidence=0.7
             )
@@ -156,6 +156,8 @@ class VisionManager:
         cv2.namedWindow("Atlas Vision V2", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("Atlas Vision V2", 640, 360)
         
+        cross_counter = 0
+        
         while self.is_running:
             try: frame = self.frame_queue.get(timeout=1)
             except queue.Empty: continue
@@ -172,13 +174,39 @@ class VisionManager:
                 for hand_lms in results.multi_hand_landmarks:
                     self.mp_draw.draw_landmarks(img, hand_lms, self.mp_hands.HAND_CONNECTIONS)
                     
-                    lm_list = []
-                    for id, lm in enumerate(hand_lms.landmark):
-                         cx, cy = int(lm.x * w), int(lm.y * h)
-                         lm_list.append([id, cx, cy])
+                # ---------------- SLEEP GESTURE (CROSSED ARMS) ----------------
+                if len(results.multi_hand_landmarks) == 2 and results.multi_handedness:
+                    hand1_x = results.multi_hand_landmarks[0].landmark[0].x
+                    hand2_x = results.multi_hand_landmarks[1].landmark[0].x
                     
-                    if lm_list:
-                        # Перевірка на кулак (Пауза)
+                    hand1_label = results.multi_handedness[0].classification[0].label
+                    hand2_label = results.multi_handedness[1].classification[0].label
+                    
+                    # Перевіряємо, чи руки схрещені. 
+                    if (hand1_label == "Left" and hand1_x > hand2_x) or (hand2_label == "Left" and hand2_x > hand1_x):
+                        cross_counter += 1
+                        print(f"[VISION] Crossed Arms detected! Counter: {cross_counter}/45")
+                    else:
+                        cross_counter = max(0, cross_counter - 2) # Плавне спадання
+                        
+                    if cross_counter > 45:
+                        print("💤 [VISION] Sleep Gesture detected. Shutting down Vision Manager to save CPU.")
+                        # Наступний цикл не виконається, потоки завершаться
+                        self.is_running = False
+                        break
+                else:
+                    cross_counter = max(0, cross_counter - 1)
+                # -------------------------------------------------------------
+                
+                # Обробляємо першу виявлену руку для жестів миші / кліків
+                hand_lms = results.multi_hand_landmarks[0]
+                lm_list = []
+                for id, lm in enumerate(hand_lms.landmark):
+                     cx, cy = int(lm.x * w), int(lm.y * h)
+                     lm_list.append([id, cx, cy])
+                
+                if lm_list:
+                    # Перевірка на кулак (Пауза)
                         if self._is_fist(lm_list):
                             self.state = "PAUSED"
                         elif self._is_l_shape(lm_list):
@@ -273,9 +301,36 @@ class VisionManager:
         elif self.state == "VOLUME_CONTROL": status_color = (255, 0, 0) # Blue
         elif self.state == "MEDIA_CONTROL": status_color = (0, 165, 255) # Orange
         
-        # HUD Panel
-        cv2.rectangle(img, (10, 10), (250, 60), (0, 0, 0), cv2.FILLED)
-        cv2.putText(img, f"STATE: {self.state}", (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, status_color, 2)
+        # Status Panel (Bottom Left)
+        cv2.rectangle(img, (10, h - 70), (250, h - 20), (0, 0, 0), cv2.FILLED)
+        cv2.putText(img, f"STATE: {self.state}", (20, h - 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
+        
+        # Camera Indicator (Top Right - Privacy/Security Feature)
+        indicator_text = "LIVE" if self.state != "IDLE" else "IDLE"
+        indicator_color = (0, 255, 0) if self.state != "IDLE" else (100, 100, 100)
+        
+        # Розраховуємо ширину тексту для вирівнювання по правому краю
+        (text_w, text_h), _ = cv2.getTextSize(indicator_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)
+        padding_x = 20
+        padding_y = 10
+        top_right_x = w - text_w - (padding_x * 2) - 10
+        top_right_y = 10
+        
+        # Малюємо фон індикатора
+        cv2.rectangle(img, 
+            (top_right_x, top_right_y), 
+            (top_right_x + text_w + (padding_x * 2), top_right_y + text_h + (padding_y * 2)), 
+            (0, 0, 0), cv2.FILLED)
+            
+        # Малюємо кольорову крапку-індикатор
+        dot_radius = 8
+        dot_center = (top_right_x + padding_x + dot_radius, top_right_y + padding_y + text_h // 2)
+        cv2.circle(img, dot_center, dot_radius, indicator_color, cv2.FILLED)
+        
+        # Малюємо текст
+        text_start_x = top_right_x + padding_x + (dot_radius * 2) + 10
+        text_start_y = top_right_y + padding_y + text_h
+        cv2.putText(img, indicator_text, (text_start_x, text_start_y), cv2.FONT_HERSHEY_SIMPLEX, 1.5, indicator_color, 3)
 
     def _queue_action(self, type, data=None):
         try:
