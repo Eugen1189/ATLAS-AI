@@ -9,8 +9,8 @@ from core.i18n import lang
 # Key: message_id, Value: {"event": threading.Event(), "result": None}
 PENDING_CONFIRMATIONS = {}
 
-def _poll_telegram(atlas_core):
-    """Background process for Telegram"""
+def _poll_telegram(axis_core):
+    """Background polling process for Telegram messages and callbacks."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
     load_dotenv(dotenv_path=env_path)
@@ -93,7 +93,7 @@ def _poll_telegram(atlas_core):
                             
                             try:
                                 context_prompt = f"(Telegram message): {text}"
-                                reply = atlas_core.think(context_prompt)
+                                reply = axis_core.think(context_prompt)
                                 
                                 print(lang.get("telegram.outgoing_reply"))
                                 requests.post(send_url, json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"})
@@ -120,6 +120,7 @@ def _poll_telegram(atlas_core):
         
         time.sleep(1)
 
-def start_telegram_listener(atlas_core):
-    thread = threading.Thread(target=_poll_telegram, args=(atlas_core,), daemon=True)
+def start_telegram_listener(axis_core):
+    """Starts the Telegram listener in a background daemon thread."""
+    thread = threading.Thread(target=_poll_telegram, args=(axis_core,), daemon=True)
     thread.start()

@@ -8,7 +8,7 @@ env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
 load_dotenv(dotenv_path=env_path)
 
 class LangModule:
-    """Singleton module to handle i18n localization in Atlas."""
+    """Singleton module to handle i18n localization in AXIS."""
     _instance = None
     
     def __new__(cls):

@@ -1,0 +1,40 @@
+# AXIS AI Agent — Cursor Rules
+# Full details: see AXIS_PLAYBOOK.md
+
+## Project Identity
+- Project name: AXIS (Agentic X-interface Intelligent System)
+- Language: Python 3.11.9
+- OS Target: Windows
+
+## Mandatory Rules
+
+### 1. i18n — Zero Hardcoded Strings
+- NEVER write raw text in print(), logging, or Telegram messages.
+- ALWAYS use: `lang.get("key")` from `core.i18n`
+- ALWAYS add new keys to: `config/locales/en.json`, `uk.json`, `es.json`
+
+### 2. Guardian Protocol
+- ANY destructive action (delete, git push, system change) MUST use `ask_user_confirmation()` from `telegram_bridge`.
+
+### 3. Code Quality
+- Type hints: REQUIRED on every function signature
+- Docstrings: Google-style on every public class and method
+- No bare `print()` in production — use `logging` to `logs/axis.log`
+- Error handling: always catch exceptions and report via `lang.get()`
+
+### 4. Architecture
+- `core/` — orchestration only, no skill logic
+- `agent_skills/` — one subfolder per skill, self-contained
+- Skills must NOT import from each other directly
+- Use `mcp_hub` for file/GitHub access when available
+
+### 5. Windows Environment
+- Use `encoding='utf-8'` when opening files
+- Background threads must use `daemon=True`
+
+## New Skill Checklist
+1. Create folder under `agent_skills/`
+2. Add `manifest.py` with functions + EXPORTED_TOOLS list
+3. Use `lang.get()` for all output strings
+4. Apply Guardian Protocol to destructive actions
+5. Add locale keys to all 3 JSON files

@@ -7,7 +7,7 @@ from core.i18n import lang
 current_dir = os.path.dirname(os.path.abspath(__file__))
 db_dir = os.path.abspath(os.path.join(current_dir, "..", "..", "memories"))
 os.makedirs(db_dir, exist_ok=True)
-DB_PATH = os.path.join(db_dir, "atlas_memory.db")
+DB_PATH = os.path.join(db_dir, "axis_memory.db")
 
 # Automatic table creation on first launch
 def _init_db():

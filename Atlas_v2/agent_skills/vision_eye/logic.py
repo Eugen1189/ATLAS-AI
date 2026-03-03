@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module='google.protobuf.
 
 class VisionManager:
     """
-    Atlas V2 Vision Manager (Clean Architecture)
+    AXIS V2.5 Vision Manager (Clean Architecture)
     - Dynamic EMA Smoothing
     - Fist Pause Gesture
     - Action Dead-Zones
@@ -154,8 +154,8 @@ class VisionManager:
         return states == [True, True, False, False, False]
 
     def _processing_worker(self):
-        cv2.namedWindow("Atlas Vision V2", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Atlas Vision V2", 640, 360)
+        cv2.namedWindow("AXIS Vision V2.5", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("AXIS Vision V2.5", 640, 360)
         
         cross_counter = 0
         
@@ -268,7 +268,7 @@ class VisionManager:
             
             # Preview
             img_small = cv2.resize(img, (640, 360))
-            cv2.imshow("Atlas Vision V2", img_small)
+            cv2.imshow("AXIS Vision V2.5", img_small)
             if cv2.waitKey(1) & 0xFF == ord('q'): break
 
         cv2.destroyAllWindows()
@@ -394,7 +394,7 @@ class VisionManager:
                         root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
                         if root_path not in sys.path:
                             sys.path.append(root_path)
-                        from Atlas_v2.agent_skills.telegram_bridge.manifest import send_telegram_file
+                        from agent_skills.telegram_bridge.manifest import send_telegram_file
                         
                         caption = lang.get("vision.tg_caption") + f"\n\nJSON Log:\n{json.dumps(log_data, ensure_ascii=False, indent=2)}"
                         send_telegram_file(file_path, caption=caption)

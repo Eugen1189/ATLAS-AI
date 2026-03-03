@@ -6,16 +6,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 from core.i18n import lang
 
-# 1. Get the absolute path to the folder where this script resides (Atlas_v2/core)
+# 1. Get the absolute path to the folder where this script resides (AXIS_v2/core)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 2. Go up two levels (Atlas_v2/core -> Atlas_v2 -> SystemCOO) to find .env
+# 2. Go up two levels (AXIS_v2/core -> AXIS_v2 -> project root) to find .env
 env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
 
 # 3. Load keys using absolute path
 load_dotenv(dotenv_path=env_path)
 
-class AtlasCore:
+class AxisCore:
+    """Main logic for the AXIS agent orchestrator."""
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -31,7 +32,7 @@ class AtlasCore:
             tools=self.available_tools if self.available_tools else None
         )
         
-        # Create a chat session. This is our "Short-term memory"
+        # Create a chat session — this is our "Short-term memory"
         # enable_automatic_function_calling=True allows Gemini to call functions autonomously
         self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=True)
         
@@ -42,7 +43,7 @@ class AtlasCore:
         tools = []
         skills_dir = Path(__file__).parent.parent / "agent_skills"
         
-        # Add Atlas_v2 to sys.path for correct imports
+        # Add AXIS_v2 to sys.path for correct imports
         sys.path.insert(0, str(Path(__file__).parent.parent))
         
         if not skills_dir.exists():

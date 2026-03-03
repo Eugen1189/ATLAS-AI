@@ -1,4 +1,4 @@
-from core.orchestrator import AtlasCore
+from core.orchestrator import AxisCore
 import sys
 import os
 
@@ -6,9 +6,9 @@ if sys.stdout.encoding != 'utf-8':
     import codecs
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
-# Add path to Atlas_v2
+# Add path to AXIS_v2
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-# Add path to project root (SystemCOO) to access config.py and others
+# Add path to project root to access config.py and others
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from agent_skills.audio_interface.listener import listen_command
 
@@ -20,10 +20,10 @@ from agent_skills.telegram_bridge.listener import start_telegram_listener
 
 def boot_sequence():
     print(lang.get("system.welcome"))
-    atlas = AtlasCore()
+    axis = AxisCore()
     
-    # START TELEGRAM IN BACKGROUND, passing the Atlas brain to it
-    start_telegram_listener(atlas)
+    # Start Telegram listener in background, passing the AXIS brain to it
+    start_telegram_listener(axis)
     
     print(lang.get("system.ready"))
     
@@ -47,8 +47,8 @@ def boot_sequence():
                 print(lang.get("system.you_said", text=command))
                 
             # Send the command (text or voice) to the brain
-            response = atlas.think(command)
-            print(lang.get("system.atlas_said", text=response))
+            response = axis.think(command)
+            print(lang.get("system.axis_said", text=response))
             
         except Exception as e:
             print(lang.get("system.sys_error", error=e))

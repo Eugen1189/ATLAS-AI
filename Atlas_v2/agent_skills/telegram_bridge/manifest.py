@@ -35,7 +35,7 @@ def send_telegram_message(text: str) -> str:
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "HTML" # Allows Atlas to use basic formatting (bold, italic)
+        "parse_mode": "HTML" # Allows AXIS to use basic formatting (bold, italic)
     }
     
     try:

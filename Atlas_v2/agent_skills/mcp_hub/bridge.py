@@ -15,7 +15,7 @@ class MCPBridge:
     def start_mcp_filesystem(self):
         """Direct spawn of filesystem server via subprocess 
         for use inside Vision Eye without requiring async ClientSession"""
-        base_path = "C:/Projects/Atlas/memories"
+        base_path = "C:/Projects/Atlas/memories"  # AXIS project root memories folder
         
         # Use absolute path for npx since Windows PATH might not update in time
         npx_path = "C:\\Program Files\\nodejs\\npx.cmd"
