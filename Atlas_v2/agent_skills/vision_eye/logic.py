@@ -186,7 +186,7 @@ class VisionManager:
                     # Check if arms are crossed. 
                     if (hand1_label == "Left" and hand1_x > hand2_x) or (hand2_label == "Left" and hand2_x > hand1_x):
                         cross_counter += 1
-                        print(lang.get("vision.crossed_arms", count=cross_counter, total=45))
+                        print(lang.get("vision.crossed_arms", counter=cross_counter))
                     else:
                         cross_counter = max(0, cross_counter - 2) # Smooth decay
                         
