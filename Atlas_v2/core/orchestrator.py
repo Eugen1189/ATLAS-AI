@@ -15,26 +15,20 @@ env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
 # 3. Load keys using absolute path
 load_dotenv(dotenv_path=env_path)
 
+from core.brain import BrainFactory
+
 class AxisCore:
     """Main logic for the AXIS agent orchestrator."""
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError(lang.get("system.missing_gemini_key", path=env_path))
-            
-        genai.configure(api_key=api_key)
-        
-        # Load tools
+        # 1. Load tools first
         self.available_tools = self._load_skills()
         
-        self.model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash',
-            tools=self.available_tools if self.available_tools else None
-        )
+        # 2. Initialize the brain
+        self.brain = BrainFactory.create_brain()
         
-        # Create a chat session — this is our "Short-term memory"
-        # enable_automatic_function_calling=True allows Gemini to call functions autonomously
-        self.chat_session = self.model.start_chat(history=[], enable_automatic_function_calling=True)
+        success = self.brain.initialize(self.available_tools)
+        if not success:
+            raise ValueError(lang.get("system.missing_gemini_key", path=env_path))
         
         print(lang.get("system.core_init_success", count=len(self.available_tools)))
 
@@ -64,6 +58,5 @@ class AxisCore:
         return tools
 
     def think(self, user_input: str) -> str:
-        # Send message to the session
-        response = self.chat_session.send_message(user_input)
-        return response.text
+        # Delegate thinking to the selected brain backend
+        return self.brain.think(user_input)
