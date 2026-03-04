@@ -27,6 +27,5 @@ jobs:
         
     - name: Run tests with coverage
       run: |
-        $env:PYTHONPATH = "$(Get-Location)/Atlas_v2"
         pytest --cov=Atlas_v2 --cov-config=.coveragerc Atlas_v2/tests
 

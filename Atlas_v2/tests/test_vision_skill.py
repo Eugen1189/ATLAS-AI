@@ -17,10 +17,12 @@ from agent_skills.vision_eye.manifest import toggle_gestures, capture_visual_con
 import agent_skills.vision_eye.logic as vision_logic
 
 class TestVisionSkill(unittest.TestCase):
-    @patch('agent_skills.vision_eye.logic.VisionManager')
+    @patch('agent_skills.vision_eye.manifest.VisionManager')
     def test_vision_toggle(self, mock_manager_class):
         # We need to control the global _vision_instance in the manifest
         # But for unit test, we just want to see it hit the lines.
+        import agent_skills.vision_eye.manifest as manifest
+        manifest._vision_instance = None
         result = toggle_gestures(True)
         self.assertIn("Mocked vision.activated", result)
         
@@ -31,6 +33,7 @@ class TestVisionSkill(unittest.TestCase):
     def test_vision_manager_init(self, mock_cap):
         mock_cap.return_value.isOpened.return_value = True
         manager = vision_logic.VisionManager()
+        manager.hands = MagicMock()
         self.assertIsNotNone(manager)
         manager.stop()
 

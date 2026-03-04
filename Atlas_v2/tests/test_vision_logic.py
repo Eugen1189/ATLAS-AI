@@ -23,12 +23,17 @@ import numpy as np
 import agent_skills.vision_eye.logic as vision_logic
 
 class TestVisionLogic(unittest.TestCase):
-    def setUp(self):
-        with patch('cv2.VideoCapture') as mock_cap:
-            mock_cap.return_value.isOpened.return_value = True
-            self.manager = vision_logic.VisionManager()
+    @patch('cv2.VideoCapture')
+    def setUp(self, mock_cap):
+        mock_cap.return_value.isOpened.return_value = True
+        self.manager = vision_logic.VisionManager()
+        # Mock hands properly to prevent issues if mediapipe init fails
+        self.manager.mp_hands = MagicMock()
+        self.manager.mp_draw = MagicMock()
+        self.manager.hands = MagicMock()
 
-    def test_processing_worker_with_hands(self):
+    @patch('cv2.VideoCapture')
+    def test_processing_worker_with_hands(self, mock_cap):
         self.manager.is_running = True
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)
         self.manager.frame_queue.put(frame)
@@ -49,8 +54,7 @@ class TestVisionLogic(unittest.TestCase):
         with patch('cv2.flip', return_value=frame), \
              patch('cv2.cvtColor', return_value=frame), \
              patch('cv2.resize', return_value=frame), \
-             patch('cv2.waitKey', side_effect=[ord('q')]), \
-             patch('agent_skills.vision_eye.logic.cv2.cvtColor', return_value=frame):
+             patch('cv2.waitKey', side_effect=[ord('q')]):
             self.manager._processing_worker()
             self.assertFalse(self.manager.is_running)
 

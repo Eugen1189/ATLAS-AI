@@ -17,7 +17,8 @@ class TestTelegramListener(unittest.TestCase):
 
     @patch('requests.get')
     @patch('requests.post')
-    def test_poll_telegram_loop_break(self, mock_post, mock_get):
+    @patch('time.sleep', return_value=None)
+    def test_poll_telegram_loop_break(self, mock_sleep, mock_post, mock_get):
         mock_core = MagicMock()
         
         # We need a way to break the while True loop after one iteration
@@ -27,13 +28,10 @@ class TestTelegramListener(unittest.TestCase):
             KeyboardInterrupt # Break the loop
         ]
         
-        with patch('os.getenv', return_value="test"):
+        with patch('os.getenv', side_effect=lambda k, d=None: "dummy" if k in ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"] else d):
             try:
                 listener._poll_telegram(mock_core)
             except KeyboardInterrupt:
                 pass
         
         self.assertTrue(mock_get.called)
-
-if __name__ == "__main__":
-    unittest.main()

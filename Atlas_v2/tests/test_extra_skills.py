@@ -4,6 +4,19 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
+# Provide dummy keys to bypass env_error checks during module imports
+os.environ['TELEGRAM_BOT_TOKEN'] = 'dummy'
+os.environ['TELEGRAM_CHAT_ID'] = 'dummy'
+os.environ['PERPLEXITY_API_KEY'] = 'dummy'
+os.environ['OPENAI_API_KEY'] = 'dummy'
+
+original_getenv = os.getenv
+def dummy_getenv(key, default=None):
+    if key in ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'PERPLEXITY_API_KEY', 'OPENAI_API_KEY']:
+        return 'dummy_key'
+    return original_getenv(key, default)
+os.getenv = dummy_getenv
+
 # Mocking packages and their submodules robustly
 for mod in [
     'cv2', 'mediapipe', 'pyautogui', 'pyaudio', 'pvporcupine', 
@@ -68,6 +81,7 @@ class TestRemainingSkills(unittest.TestCase):
         result = open_workspace("test_project")
         self.assertIn("Mocked workspace.success", result)
 
+    @patch.dict('os.environ', {'PERPLEXITY_API_KEY': 'fake_key'})
     @patch('requests.post')
     def test_web_research(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -75,6 +89,7 @@ class TestRemainingSkills(unittest.TestCase):
         result = perplexity_search("query")
         self.assertIn("Deep results", result)
 
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'fake_key'})
     @patch('agent_skills.audio_interface.manifest.OpenAI')
     @patch('agent_skills.audio_interface.manifest.pygame', create=True)
     def test_audio_speak(self, mock_pygame, mock_openai):
@@ -83,6 +98,7 @@ class TestRemainingSkills(unittest.TestCase):
         self.assertIn("Text voiced successfully", result)
 
 
+    @patch.dict('os.environ', {'TELEGRAM_BOT_TOKEN': 'fake_token', 'TELEGRAM_CHAT_ID': 'fake_id'})
     @patch('requests.post')
     def test_telegram_send(self, mock_post):
         mock_post.return_value.status_code = 200
