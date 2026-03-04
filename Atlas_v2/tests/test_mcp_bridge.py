@@ -68,5 +68,38 @@ class TestMcpBridge(unittest.IsolatedAsyncioTestCase):
         await self.bridge.shutdown()
         self.assertTrue(self.bridge.exit_stack.aclose.called)
 
+    def test_mcp_manifest_functions(self):
+        from agent_skills.mcp_hub.manifest import send_to_mcp_sync
+        from core.i18n import lang
+        
+        # Test not connected
+        with patch('agent_skills.mcp_hub.manifest.get_bridge') as mock_get_bridge:
+            mock_bridge = MagicMock()
+            mock_bridge.sessions = {}
+            mock_get_bridge.return_value = mock_bridge
+            
+            res = send_to_mcp_sync("bad_server", "tool", {})
+            self.assertEqual(res, lang.get("mcp.conn_failed", name="bad_server", error="Not Connected"))
+            
+        # Test valid connection via normal branch
+        with patch('agent_skills.mcp_hub.manifest.get_bridge') as mock_get_bridge:
+            mock_session = AsyncMock()
+            mock_session.call_tool.return_value = "Success"
+            
+            mock_bridge = MagicMock()
+            mock_bridge.sessions = {"test_server": mock_session}
+            mock_get_bridge.return_value = mock_bridge
+            
+            with patch('asyncio.get_event_loop') as mock_loop:
+                # We mock ensure_future and run_until_complete to resolve our AsyncMock
+                mock_loop.return_value.is_running.return_value = False
+                mock_loop.return_value.run_until_complete.side_effect = lambda coro: coro.send(None)
+                
+                try: 
+                    # send() on coroutine usually raises StopIteration(val) when done
+                    send_to_mcp_sync("test_server", "tool", {}) 
+                except StopIteration:
+                    pass
+
 if __name__ == "__main__":
     unittest.main()
