@@ -42,23 +42,27 @@ class TestCoverageBooster(unittest.TestCase):
             mock_event.return_value = mock_instance
             ask_user_confirmation("Prompt")
 
-    @patch('cv2.namedWindow')
-    @patch('cv2.imshow')
-    @patch('cv2.waitKey', side_effect=[ord('q')])
     @patch('cv2.VideoCapture')
-    def test_vision_logic_loop(self, mock_cap, mock_wait, mock_show, mock_win):
+    def test_vision_logic_loop(self, mock_cap):
+        mock_cap.return_value.isOpened.return_value = True
+        mock_cap.return_value.read.return_value = (True, np.zeros((480, 640, 3), dtype=np.uint8))
         from agent_skills.vision_eye.logic import VisionManager
         import cv2
-        cv2.getTextSize.return_value = ((100, 20), 10)
         manager = VisionManager()
         manager.hands = MagicMock()
         manager.is_running = True
-        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
         manager.frame_queue.put(frame)
-        with patch('cv2.flip', return_value=frame), patch('cv2.resize', return_value=frame), \
-             patch('agent_skills.vision_eye.logic.cv2.cvtColor', return_value=frame):
-            manager._processing_worker()
-            self.assertFalse(manager.is_running)
+        
+        from agent_skills.vision_eye import logic
+        logic.cv2.flip = MagicMock(return_value=frame)
+        logic.cv2.cvtColor = MagicMock(return_value=frame)
+        logic.cv2.resize = MagicMock(return_value=frame)
+        logic.cv2.waitKey = MagicMock(side_effect=[ord('q')])
+        logic.cv2.getTextSize = MagicMock(return_value=((100, 20), 10))
+        
+        manager._processing_worker()
+        self.assertFalse(manager.is_running)
 
 if __name__ == "__main__":
     unittest.main()

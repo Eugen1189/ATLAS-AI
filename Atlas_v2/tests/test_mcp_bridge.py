@@ -35,15 +35,16 @@ class TestMcpBridge(unittest.IsolatedAsyncioTestCase):
     @patch('agent_skills.mcp_hub.bridge.stdio_client')
     @patch('agent_skills.mcp_hub.bridge.ClientSession')
     async def test_connect_to_server(self, mock_client_session, mock_stdio_client):
-        # Setup mocks for async context managers
-        mock_stdio_cm = AsyncMock()
-        mock_stdio_cm.__aenter__.return_value = (MagicMock(), MagicMock())
-        mock_stdio_client.return_value = mock_stdio_cm
+        mock_stdio_cm_result = (MagicMock(), MagicMock())
+        mock_session_instance = MagicMock()
+        mock_session_instance.initialize = AsyncMock()
         
-        mock_session_cm = AsyncMock()
-        mock_session_instance = AsyncMock(spec=['initialize'])
-        mock_session_cm.__aenter__.return_value = mock_session_instance
-        mock_client_session.return_value = mock_session_cm
+        async def mock_enter(cm):
+            if cm == mock_stdio_client.return_value:
+                return mock_stdio_cm_result
+            return mock_session_instance
+            
+        self.bridge.exit_stack.enter_async_context = mock_enter
 
         res = await self.bridge.connect_to_server("test_server", "echo", ["hello"])
         self.assertTrue(res)
@@ -53,12 +54,14 @@ class TestMcpBridge(unittest.IsolatedAsyncioTestCase):
     @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=MagicMock)
     @patch('json.load')
-    async def test_connect_from_config(self, mock_json_load, mock_open, mock_exists):
+    @patch('os.environ.copy')
+    async def test_connect_from_config(self, mock_env_copy, mock_json_load, mock_open, mock_exists):
         mock_json_load.return_value = {"mcp_servers": {"test": {"command": "echo", "args": [], "env": {"VAR": "VALUE"}}}}
+        mock_env_copy.return_value = {"MOCK_ENV": "1"}
         with patch.object(self.bridge, 'connect_to_server', new_callable=AsyncMock) as mock_connect:
             await self.bridge.connect_from_config()
             self.assertTrue(mock_connect.called)
-            mock_connect.assert_called_with("test", "echo", [], {"VAR": "VALUE"})
+            mock_connect.assert_called_with("test", "echo", [], {"MOCK_ENV": "1", "VAR": "VALUE"})
 
     async def test_shutdown(self):
         self.bridge.exit_stack = AsyncMock()

@@ -91,13 +91,11 @@ class TestRemainingSkills(unittest.TestCase):
 
     @patch.dict('os.environ', {'OPENAI_API_KEY': 'fake_key'})
     @patch('agent_skills.audio_interface.manifest.OpenAI')
-    @patch('agent_skills.audio_interface.manifest.pygame', create=True)
-    def test_audio_speak(self, mock_pygame, mock_openai):
-        mock_pygame.mixer.music.get_busy.return_value = False
+    def test_audio_speak(self, mock_openai):
+        import sys
+        sys.modules['pygame'].mixer.music.get_busy.return_value = False
         result = speak("Hello")
         self.assertIn("Text voiced successfully", result)
-
-
     @patch.dict('os.environ', {'TELEGRAM_BOT_TOKEN': 'fake_token', 'TELEGRAM_CHAT_ID': 'fake_id'})
     @patch('requests.post')
     def test_telegram_send(self, mock_post):

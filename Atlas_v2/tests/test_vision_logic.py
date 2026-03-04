@@ -26,6 +26,7 @@ class TestVisionLogic(unittest.TestCase):
     @patch('cv2.VideoCapture')
     def setUp(self, mock_cap):
         mock_cap.return_value.isOpened.return_value = True
+        mock_cap.return_value.read.return_value = (True, np.zeros((480, 640, 3), dtype=np.uint8))
         self.manager = vision_logic.VisionManager()
         # Mock hands properly to prevent issues if mediapipe init fails
         self.manager.mp_hands = MagicMock()
@@ -35,7 +36,7 @@ class TestVisionLogic(unittest.TestCase):
     @patch('cv2.VideoCapture')
     def test_processing_worker_with_hands(self, mock_cap):
         self.manager.is_running = True
-        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
         self.manager.frame_queue.put(frame)
         
         # Mock Mediapipe Results
@@ -51,12 +52,14 @@ class TestVisionLogic(unittest.TestCase):
         
         self.manager.hands.process.return_value = mock_results
         
-        with patch('cv2.flip', return_value=frame), \
-             patch('cv2.cvtColor', return_value=frame), \
-             patch('cv2.resize', return_value=frame), \
-             patch('cv2.waitKey', side_effect=[ord('q')]):
-            self.manager._processing_worker()
-            self.assertFalse(self.manager.is_running)
+        vision_logic.cv2.flip = MagicMock(return_value=frame)
+        vision_logic.cv2.cvtColor = MagicMock(return_value=frame)
+        vision_logic.cv2.resize = MagicMock(return_value=frame)
+        vision_logic.cv2.waitKey = MagicMock(side_effect=[ord('q')])
+        vision_logic.cv2.getTextSize = MagicMock(return_value=((100, 20), 10))
+        
+        self.manager._processing_worker()
+        self.assertFalse(self.manager.is_running)
 
 if __name__ == "__main__":
     unittest.main()
