@@ -29,15 +29,19 @@ class GeminiBrain(BaseBrain):
             return False
             
         from core.brain.blueprints import BlueprintManager
+        from core.brain.memory import memory_manager
         self.bp_manager = BlueprintManager()
         self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
+        self.memory = memory_manager
 
         genai.configure(api_key=api_key)
         
+        system_instr = self.bp_manager.get_system_prompt_addon() + self.memory.get_context_for_prompt()
+
         self.model = genai.GenerativeModel(
             model_name='gemini-2.0-flash',
             tools=available_tools if available_tools else None,
-            system_instruction=self.bp_manager.get_system_prompt_addon()
+            system_instruction=system_instr
         )
         
         # Create a chat session with automatic function calling
@@ -137,14 +141,17 @@ class OllamaBrain(BaseBrain):
             return False
 
         from core.brain.blueprints import BlueprintManager
+        from core.brain.memory import memory_manager
         self.bp_manager = BlueprintManager()
         self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
+        self.memory = memory_manager
 
         self.available_tools = available_tools
         self.system_prompt = self._build_tool_manifest(available_tools)
         
-        # Add personality context to the system prompt
+        # Add personality and project memory context to the system prompt
         self.system_prompt += self.bp_manager.get_system_prompt_addon()
+        self.system_prompt += self.memory.get_context_for_prompt()
         
         # We start the chat history with the system prompt
         self.history = [
@@ -222,11 +229,31 @@ class OllamaBrain(BaseBrain):
             if "```json" in msg_content and "```" in msg_content.split("```json", 1)[1]:
                 json_str = msg_content.split("```json")[1].split("```")[0].strip()
                 try:
-                    # Clean up triple quotes which Ollama often uses incorrectly in JSON
+                    # Robust JSON repair for Ollama
+                    # 1. Handle triple quotes
                     if '"""' in json_str:
                         json_str = json_str.replace('"""', '"')
                     
-                    req = json.loads(json_str, strict=False)
+                    # 2. Attempt to fix common nested quote issues in "content" or "arguments"
+                    # This is a greedy approach but often works for simple nested structures
+                    import re
+                    
+                    # Try to parse; if it fails, try to escape inner quotes
+                    try:
+                        req = json.loads(json_str, strict=False)
+                    except json.JSONDecodeError:
+                        # Find "content": "..." and escape internal quotes
+                        # This is risky but Ollama often fails here
+                        match = re.search(r'("content"| "text")\s*:\s*"(.*)"\s*,\s*"', json_str, re.DOTALL)
+                        if not match: # Try it as the last element
+                             match = re.search(r'("content"| "text")\s*:\s*"(.*)"\s*}', json_str, re.DOTALL)
+                        
+                        if match:
+                            inner_content = match.group(2)
+                            escaped_content = inner_content.replace('"', '\\"')
+                            json_str = json_str.replace(inner_content, escaped_content)
+                        
+                        req = json.loads(json_str, strict=False)
                     tool_name = req.get("tool_name")
                     args = req.get("arguments", {})
                     
@@ -238,6 +265,17 @@ class OllamaBrain(BaseBrain):
                             # Execute the standard python tool
                             result = tool_func(**args)
                             tool_result_str = f"Tool '{tool_name}' returned:\n{result}"
+                            
+                            # --- Fact Extractor Hook ---
+                            if tool_name == "write_file":
+                                filepath = args.get("filepath", "unknown")
+                                if "agent_skills" in filepath:
+                                    skill_name = filepath.split("agent_skills")[-1].replace("\\", "/").strip("/").split("/")[0]
+                                    self.memory.store_fact(f"skill_{skill_name}", f"Registered new Python skill at {filepath}")
+                                else:
+                                    self.memory.store_fact(f"file_modified", f"Updated file {filepath}")
+                            # ---------------------------
+
                         except Exception as e:
                             tool_result_str = f"Tool '{tool_name}' failed with error: {e}\n{traceback.format_exc()}"
                     else:
