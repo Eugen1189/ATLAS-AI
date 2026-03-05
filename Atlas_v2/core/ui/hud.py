@@ -8,9 +8,10 @@ from core.logger import logger
 
 class LogBridge(QObject):
     """
-    Bridge to safely emit log signals from background threads to the UI thread.
+    Bridge to safely emit logs and vision data from background threads to the UI thread.
     """
     new_log = pyqtSignal(str)
+    vision_update = pyqtSignal(dict) # To pass coordinates and gesture state
 
 class HUDLogHandler(logging.Handler):
     """
@@ -31,7 +32,9 @@ class AxisHUD(QMainWindow):
     """
     Main HUD (Heads-Up Display) for AXIS v2.5.
     
-    Now includes a real-time Log Streamer (Pulse of AXIS).
+    Includes:
+    - Real-time Log Streamer (Pulse of AXIS)
+    - Cyber-Vision Overlay (Aura Mapping)
     """
 
     def __init__(self):
@@ -44,8 +47,10 @@ class AxisHUD(QMainWindow):
         # 1. State and Bridge
         self.max_logs = 5
         self.log_labels = []
+        self.hand_pos = None # Stores normalized coords (dict)
         self.bridge = LogBridge()
         self.bridge.new_log.connect(self.update_log)
+        self.bridge.vision_update.connect(self.update_vision)
         
         # 2. Window Flags
         self.setWindowFlags(
@@ -86,11 +91,48 @@ class AxisHUD(QMainWindow):
         logging.getLogger().addHandler(hud_handler)
         
         self.showFullScreen()
-        logger.info("ui.hud_started", streamer="connected")
+        logger.info("ui.hud_started", mode="cyber_vision_ready")
 
     def set_mouse_transparent(self):
         """Pass mouse inputs through the window."""
         self.setWindowFlag(Qt.WindowType.WindowTransparentForInput)
+
+    def paintEvent(self, event):
+        """Draws the Cyber-Vision Aura around the detected hand position."""
+        if not self.hand_pos or self.hand_pos.get("state") == "IDLE":
+            return
+
+        from PyQt6.QtGui import QPainter, QColor, QPen
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Map screen coordinates
+        x = int(self.hand_pos["x"])
+        y = int(self.hand_pos["y"])
+        state = self.hand_pos["state"]
+
+        # Determine Aura Color
+        color = QColor(0, 191, 255, 100) # DeepSkyBlue
+        if state == "CLICK": color = QColor(255, 0, 0, 150) # Red
+        elif state == "PAUSED": color = QColor(255, 255, 0, 150) # Yellow
+        elif state == "ACTIVE": color = QColor(0, 255, 0, 150) # Green
+
+        # Draw pulsing circle
+        painter.setPen(QPen(color, 2, Qt.PenStyle.SolidLine))
+        painter.setBrush(QColor(color.red(), color.green(), color.blue(), 30))
+        
+        radius = 30 + (int(time.time() * 10) % 10) # Simple pulse
+        painter.drawEllipse(x - radius, y - radius, radius * 2, radius * 2)
+
+        # Draw Label
+        painter.setPen(QPen(color, 2))
+        painter.setFont(QFont("Consolas", 10, QFont.Weight.Bold))
+        painter.drawText(x + radius + 10, y, f"[{state}]")
+
+    def update_vision(self, data: dict):
+        """Receives new vision data and triggers a repaint."""
+        self.hand_pos = data
+        self.update() # Triggers paintEvent
 
     def update_telemetry(self, text: str):
         """Updates the status title."""

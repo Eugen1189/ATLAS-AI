@@ -19,11 +19,12 @@ class VisionManager:
     - Dynamic EMA Smoothing
     - Fist Pause Gesture
     - Action Dead-Zones
-    - Visual HUD
+    - Visual HUD Integration (PyQt6 Signals)
     """
-    def __init__(self, camera_index=0):
+    def __init__(self, camera_index=0, hud_bridge=None):
         self.camera_index = camera_index
         self.is_running = False
+        self.hud_bridge = hud_bridge # Bridge for UI updates
         
         # Threads & Queues
         self.capture_thread = None
@@ -259,10 +260,21 @@ class VisionManager:
                             
                             self.prev_x, self.prev_y = self.smooth_x, self.smooth_y
                             
-                            # Draw cursor
+                            # Draw cursor and Notify HUD
+                            if self.hud_bridge:
+                                self.hud_bridge.vision_update.emit({
+                                    "x": screen_x,
+                                    "y": screen_y,
+                                    "state": self.state,
+                                    "cam_x": self.smooth_x / w, # Normalized
+                                    "cam_y": self.smooth_y / h
+                                })
+
                             cv2.circle(img, (self.smooth_x, self.smooth_y), 15, (0, 255, 0) if self.state == "ACTIVE" else (0, 0, 255), cv2.FILLED)
             else:
                 self.state = "IDLE"
+                if self.hud_bridge:
+                    self.hud_bridge.vision_update.emit({"state": "IDLE"})
 
             self._draw_hud(img)
             
