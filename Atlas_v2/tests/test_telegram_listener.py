@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
-import os
 
 # Mock dependencies
 sys.modules['google.generativeai'] = MagicMock()

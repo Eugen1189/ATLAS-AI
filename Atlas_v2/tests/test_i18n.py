@@ -1,6 +1,5 @@
 import unittest
-import json
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from core.i18n import LangModule
 
 class TestI18n(unittest.TestCase):

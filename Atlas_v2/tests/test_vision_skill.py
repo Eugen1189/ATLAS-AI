@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
-import os
 
 # Mock CV2, MediaPipe, pyautogui
 sys.modules['cv2'] = MagicMock()

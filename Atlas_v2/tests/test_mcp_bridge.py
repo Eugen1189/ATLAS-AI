@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch, AsyncMock
 import sys
-import os
 
 def apply_mocks():
     mock_pyautogui = MagicMock()

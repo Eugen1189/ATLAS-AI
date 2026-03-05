@@ -1,5 +1,3 @@
-import os
-import json
 from .bridge import get_bridge
 import asyncio
 from core.i18n import lang
@@ -30,7 +28,7 @@ def send_to_mcp_sync(server_name: str, tool_name: str, args_dict: dict):
             return loop.run_until_complete(task)
         else:
             return loop.run_until_complete(_call())
-    except Exception as e:
+    except Exception:
         return loop.run_until_complete(_call())
 
 EXPORTED_TOOLS = [

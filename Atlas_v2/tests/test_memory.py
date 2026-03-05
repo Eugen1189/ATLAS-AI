@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import os
-import sqlite3
 import tempfile
 import shutil
 
@@ -10,7 +9,6 @@ from core.i18n import lang
 lang.get = MagicMock(side_effect=lambda key, **kwargs: f"Mocked {key}")
 
 from agent_skills.memory_manager.manifest import save_to_memory, search_memory, _init_db
-import agent_skills.memory_manager.manifest as memory_manager
 
 class TestMemoryManager(unittest.TestCase):
     def setUp(self):

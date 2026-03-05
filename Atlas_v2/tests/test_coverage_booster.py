@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 import sys
-import os
 
 def apply_mocks():
     mock_pyautogui = MagicMock()
@@ -47,7 +46,6 @@ class TestCoverageBooster(unittest.TestCase):
         mock_cap.return_value.isOpened.return_value = True
         mock_cap.return_value.read.return_value = (True, np.zeros((480, 640, 3), dtype=np.uint8))
         from agent_skills.vision_eye.logic import VisionManager
-        import cv2
         manager = VisionManager()
         manager.hands = MagicMock()
         manager.is_running = True

@@ -1,6 +1,5 @@
 import os
 import threading
-import sys
 from .logic import VisionManager
 from core.i18n import lang
 
