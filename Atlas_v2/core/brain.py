@@ -90,6 +90,14 @@ class OllamaBrain(BaseBrain):
             "  \"arguments\": {\"query\": \"latest AI news\"}\n"
             "}\n"
             "```\n\n"
+            "### CRITICAL ENVIRONMENT RULES:\n"
+            "1. **Platform**: You are running in a Python 3.12 environment (AXIS V2.5).\n"
+            "2. **Skill Architecture**: Every 'Skill' MUST be a Python module.\n"
+            "   - Path: `agent_skills/{skill_name}/`\n"
+            "   - Files: `__init__.py` (logic) and `manifest.py` (metadata).\n"
+            "3. **Prohibition**: DO NOT create Bash, Shell, or Batch scripts.\n"
+            "4. **Logging**: Use `structlog` in all generated Python code.\n"
+            "5. **Output Format**: If you decide to create a skill, use the `write_file` tool.\n\n"
             "Available tools:\n"
         )
         
@@ -176,8 +184,8 @@ class OllamaBrain(BaseBrain):
         
         self.history.append({"role": "user", "content": user_input})
         
-        # Max 3 consecutive tool calls to prevent infinite loops
-        max_depth = 3
+        # Max 7 consecutive tool calls to prevent infinite loops but allow multi-step tasks
+        max_depth = 7
         depth = 0
         
         while depth < max_depth:
@@ -199,7 +207,11 @@ class OllamaBrain(BaseBrain):
             if "```json" in msg_content and "```" in msg_content.split("```json", 1)[1]:
                 json_str = msg_content.split("```json")[1].split("```")[0].strip()
                 try:
-                    req = json.loads(json_str)
+                    # Clean up triple quotes which Ollama often uses incorrectly in JSON
+                    if '"""' in json_str:
+                        json_str = json_str.replace('"""', '"')
+                    
+                    req = json.loads(json_str, strict=False)
                     tool_name = req.get("tool_name")
                     args = req.get("arguments", {})
                     

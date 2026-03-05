@@ -17,7 +17,7 @@ class TestOrchestrator(unittest.TestCase):
         # Ensure lang.get is mocked
         lang.get = MagicMock(side_effect=lambda key, **kwargs: f"Mocked {key}")
 
-    @patch.dict(os.environ, {"GEMINI_API_KEY": "test_key"})
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test_key", "AI_BRAIN": "gemini"})
     @patch("core.brain.genai.GenerativeModel")
     @patch("core.orchestrator.AxisCore._load_skills")
     def test_init(self, mock_load_skills, mock_gen_model):

@@ -16,7 +16,11 @@ def execute_command(command: str) -> str:
     Args:
         command: Command to execute in the terminal.
     """
-    print(lang.get("terminal.executing", command=command))
+    from core.logger import logger
+    logger.info("terminal.cmd_exec", command=command)
+    
+    # Optional print for CLI UI if you want, using correct kwarg `cmd`
+    print(lang.get("terminal.executing", cmd=command))
     try:
         # Execute the command and capture output
         result = subprocess.run(
@@ -32,11 +36,14 @@ def execute_command(command: str) -> str:
         error = result.stderr.strip()
         
         if result.returncode == 0:
+            logger.info("terminal.cmd_success", status=result.returncode)
             return lang.get("terminal.success", output=output if output else lang.get("terminal.no_output"))
         else:
+            logger.warning("terminal.cmd_failed", status=result.returncode, error=error)
             return lang.get("terminal.failed", code=result.returncode, error=error, output=output)
             
     except Exception as e:
+        logger.error("terminal.crit_error", error=str(e))
         return lang.get("terminal.crit_error", error=e)
 
 # Export tool
