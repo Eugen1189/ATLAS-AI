@@ -22,3 +22,11 @@ Follow these rules strictly:
 - **[Context.Awareness]**: Before writing code, read the existing `pyproject.toml` to know which library versions are already used, and `core/logger.py` to inherit the logging style.
 - **[Context.NoShadowing]**: Always check that you are not shadowing existing system modules or global project variables (like the `lang` case).
 - **[Guardian.Protocol]**: Respect Guardian Protocol: confirm destructive actions via the Telegram skill.
+
+## 🚀 Level 5: Prompt Engineering Protocol (Based on 20 Rules)
+1. **Be Specific & Avoid Ambiguity**: All code suggestions must be precise and production-ready.
+2. **Contextual Awareness**: Always consider the existing project structure and `pyproject.toml`.
+3. **Step-by-Step Execution**: For complex logic, explain your reasoning before writing code.
+4. **Constraint Adherence**: No `print()`, use `structlog`. No global state, use modular classes.
+5. **Validation**: Verify your output for logical inconsistencies before presenting it.
+6. **Format**: Use structured Markdown for explanations and strict JSON for configurations.
