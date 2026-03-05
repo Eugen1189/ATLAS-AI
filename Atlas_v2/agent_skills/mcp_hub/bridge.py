@@ -3,11 +3,19 @@ import json
 import os
 import subprocess
 from contextlib import AsyncExitStack
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from core.logger import logger
+
+try:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    logger.warning("mcp.library_missing", message="mcp-python-sdk not installed. MCP Hub features will be disabled.")
 
 class MCPBridge:
     def __init__(self):
+        self.available = MCP_AVAILABLE
         self.sessions = {}
         self.exit_stack = AsyncExitStack()
         self.server_processes = {}
@@ -30,18 +38,22 @@ class MCPBridge:
             process = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
             )
-            print(f"[MCP] Filesystem Server started (Subprocess) for {base_path}")
+            logger.info("mcp.filesystem_started", path=base_path)
             self.server_processes['filesystem_subprocess'] = process
             return process
         except Exception as e:
-            print(f"[MCP] Error starting Filesystem Server: {e}")
+            logger.error("mcp.filesystem_start_error", error=str(e))
             return None
 
     async def connect_from_config(self):
         """Reads config and connects all described servers"""
+        if not self.available:
+            logger.warning("mcp.config_skip", reason="mcp library not available")
+            return
+
         config_path = os.path.join(os.path.dirname(__file__), 'config.json')
         if not os.path.exists(config_path):
-            print("⚠️ [MCP Hub]: config.json not found.")
+            logger.warning("mcp.config_not_found", path=config_path)
             return
 
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -65,7 +77,11 @@ class MCPBridge:
 
     async def connect_to_server(self, name, command, args, env=None):
         """Connects to a specific MCP server and keeps the session open"""
-        print(f"🔄 [MCP Hub]: Expected connection to {name} ({command} {' '.join(args)})...")
+        if not self.available:
+            logger.error("mcp.connect_error", name=name, reason="mcp library missing")
+            return False
+
+        logger.info("mcp.connecting", name=name, command=command)
         server_params = StdioServerParameters(command=command, args=args, env=env)
         
         try:
@@ -74,18 +90,17 @@ class MCPBridge:
             await session.initialize()
             
             self.sessions[name] = session
-            print(f"✅ [MCP Hub]: Connected to {name}")
+            logger.info("mcp.connected", name=name)
             return True
         except Exception as e:
-            print(f"❌ [MCP Hub]: Failed to connect to {name}. Check if {command} is installed.")
-            print(f"   Details: {e}")
+            logger.error("mcp.server_connection_failed", name=name, error=str(e))
             return False
 
     async def shutdown(self):
         """Close all MCP connections"""
         await self.exit_stack.aclose()
         self.sessions.clear()
-        print("🛑 [MCP Hub]: All sessions closed.")
+        logger.info("mcp.shutdown_complete")
 
 # Global instance for use in other modules (e.g. Vision)
 _bridge_instance = None

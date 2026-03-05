@@ -1,5 +1,6 @@
 from googlesearch import search
 from core.i18n import lang
+from core.logger import logger
 
 def google_research(query: str, num_results: int = 5, search_lang: str = "uk") -> list[str]:
     """
@@ -15,15 +16,15 @@ def google_research(query: str, num_results: int = 5, search_lang: str = "uk") -
     Returns:
         A list of found URLs.
     """
-    print(lang.get("web.searching_google", query=query))
+    logger.info("web.searching_google", query=query, lang=search_lang)
     results = []
     try:
         # advanced=True allows getting descriptions, but URLs are enough for simple search
         for url in search(query, num_results=num_results, lang=search_lang):
             results.append(url)
-            print(lang.get("web.found_google", url=url))
+            logger.debug("web.found_google", url=url)
         return results
     except Exception as e:
         error_msg = lang.get("web.google_error", error=e)
-        print(f"❌ {error_msg}")
+        logger.error("web.google_search_failed", query=query, error=str(e))
         return [error_msg]

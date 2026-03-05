@@ -1,5 +1,57 @@
-# This file makes modern pytest discovery easier and sets the root
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axis-ai"
+version = "2.5.0"
+description = "Autonomous Spatial AI & MCP Framework"
+authors = [
+    {name = "Eugen1189", email = "your.email@example.com"}
+]
+dependencies = [
+    "google-generativeai==0.8.5",
+    "google-genai==1.55.0",
+    "python-dotenv==1.2.1",
+    "requests==2.32.5",
+    "pyyaml==6.0.3",
+    "psutil>=5.9.0",
+    "flet==0.28.3",
+    "pystray>=0.19.5",
+    "pywin32==311",
+    "pyautogui>=0.9.54",
+    "pygetwindow>=0.0.9",
+    "pvporcupine>=2.2.1",
+    "pyaudio>=0.2.13",
+    "faster-whisper>=0.10.0",
+    "numpy>=2.3.0,<3.0.0",
+    "edge-tts>=7.0.0",
+    "pydub>=0.25.0",
+    "opencv-python>=4.10.0",
+    "mediapipe>=0.10.0",
+    "python-osc>=1.8.0",
+    "websockets==15.0.1",
+    "python-telegram-bot==21.9",
+    "schedule>=1.2.0",
+    "ddgs>=0.1.0",
+    "tqdm==4.67.1",
+    "colorama==0.4.6",
+    "mcp>=1.1.2",
+    "googlesearch-python>=1.2.3",
+    "structlog>=24.4.0",
+    "rich>=13.7.1"
+]
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0"
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["Atlas_v2"]
 testpaths = ["Atlas_v2/tests"]
 python_files = ["test_*.py"]
+asyncio_mode = "auto"
