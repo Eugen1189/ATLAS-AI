@@ -67,10 +67,17 @@
         "missing_gemini_key": "❌ GEMINI_API_KEY not found! Checked path: {path}",
         "core_init_success": "🧠 [AXIS Core]: Initialization successful. Loaded {count} tools.",
         "skill_loaded": "✅ [Kernel]: Skill '{name}' loaded.",
-        "skill_load_error": "⚠️ [Kernel]: Error loading skill '{name}': {error}"
+        "skill_load_error": "⚠️ [Kernel]: Error loading skill '{name}': {error}",
+        "validating_skill": "🧪 [Validator]: Running unit tests for skill '{name}'...",
+        "validation_success": "✅ [Validator]: Skill '{name}' passed all tests.",
+        "validation_failed": "❌ [Validator]: Skill '{name}' failed validation.",
+        "validation_error": "⚠️ [Validator]: Error during validation of '{name}': {error}",
+        "dangerous_command": "🚨 [Security]: Dangerous command detected! Execution blocked: {command}",
+        "syntax_error": "❌ [Security]: Syntax error in generated code: {error}"
     },
     "terminal": {
         "executing": "⚡ [Terminal Operator]: Executing command: `{cmd}`",
+        "dangerous_command_waiting": "🚨 [Security]: Dangerous command '{cmd}'. Show Thumbs Up (👍) or allow in UI to confirm.",
         "success": "✅ Command executed successfully.\nOutput:\n{out}",
         "no_output": "No text output.",
         "failed": "❌ Command failed (Code {code}).\nError:\n{err}\nPartial Output:\n{out}",

@@ -64,3 +64,17 @@ def setup_logger():
 
 # Global logger instance
 logger = setup_logger()
+
+import time
+from functools import wraps
+
+def time_it(func):
+    """Decorator to measure execution time of functions for the optimization loop."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        duration = time.time() - start_time
+        logger.info("performance.timing", function=func.__name__, duration_sec=round(duration, 3))
+        return result
+    return wrapper

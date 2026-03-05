@@ -1,7 +1,9 @@
 import subprocess
 import os
 from core.i18n import lang
+from core.logger import time_it
 
+@time_it
 def execute_command(command: str) -> str:
     """
     Executes a system command in the terminal (PowerShell/CMD) and returns the result (stdout/stderr).
@@ -16,9 +18,32 @@ def execute_command(command: str) -> str:
     Args:
         command: Command to execute in the terminal.
     """
+    from core.validator import SecurityValidator
     from core.logger import logger
+    import time
+
     logger.info("terminal.cmd_exec", command=command)
-    
+
+    if not SecurityValidator.is_safe_command(command):
+        print(lang.get("terminal.dangerous_command_waiting", cmd=command))
+        os.environ["AXIS_CONFIRM"] = "FALSE"
+        
+        # Explain and wait for confirmation (Thumbs Up or telegram logic)
+        confirmed = False
+        start_time = time.time()
+        while time.time() - start_time < 15:
+            if os.environ.get("AXIS_CONFIRM") == "TRUE":
+                confirmed = True
+                break
+            time.sleep(0.5)
+            
+        if not confirmed:
+            os.environ["AXIS_CONFIRM"] = "FALSE"
+            return lang.get("dangerous_command", command=command) + " (Not confirmed)"
+            
+        os.environ["AXIS_CONFIRM"] = "FALSE"
+        print("✅ Command Confirmed.")
+
     # Optional print for CLI UI if you want, using correct kwarg `cmd`
     print(lang.get("terminal.executing", cmd=command))
     try:

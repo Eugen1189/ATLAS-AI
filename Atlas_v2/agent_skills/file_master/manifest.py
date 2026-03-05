@@ -54,6 +54,13 @@ def write_file(filepath: str, content: str) -> str:
         content: Text or code to write.
     """
     print(lang.get("file_master.writing_file", lines=len(content.splitlines()), path=filepath))
+    from core.validator import SecurityValidator
+    if filepath.endswith(".py"):
+        if not SecurityValidator.validate_python_syntax(content):
+            # We don't block yet, but we should inform. 
+            # Actually, for "Enterprise" level, blocking invalid syntax is better.
+            return lang.get("syntax_error", error="Invalid Python Syntax")
+
     try:
         os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:

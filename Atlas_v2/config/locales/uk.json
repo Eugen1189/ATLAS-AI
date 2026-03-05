@@ -67,10 +67,17 @@
         "missing_gemini_key": "❌ GEMINI_API_KEY не знайдено! Перевірено шлях: {path}",
         "core_init_success": "🧠 [AXIS Core]: Ініціалізація успішна. Завантажено {count} інструментів.",
         "skill_loaded": "✅ [Kernel]: Скіл '{name}' завантажено.",
-        "skill_load_error": "⚠️ [Kernel]: Помилка завантаження скіла '{name}': {error}"
+        "skill_load_error": "⚠️ [Kernel]: Помилка завантаження скіла '{name}': {error}",
+        "validating_skill": "🧪 [Validator]: Запуск юніт-тестів для скіла '{name}'...",
+        "validation_success": "✅ [Validator]: Скіл '{name}' успішно пройшов усі тести.",
+        "validation_failed": "❌ [Validator]: Скіл '{name}' не пройшов валідацію.",
+        "validation_error": "⚠️ [Validator]: Помилка під час валідації '{name}': {error}",
+        "dangerous_command": "🚨 [Security]: Виявлено небезпечну команду! Виконання заблоковано: {command}",
+        "syntax_error": "❌ [Security]: Синтаксична помилка у згенерованому коді: {error}"
     },
     "terminal": {
         "executing": "⚡ [Terminal Operator]: Виконую команду: `{cmd}`",
+        "dangerous_command_waiting": "🚨 [Security]: Небезпечна команда '{cmd}'. Покажи жест Thumbs Up (👍) або підтвердь у UI.",
         "success": "✅ Команда виконана успішно.\nВивід:\n{out}",
         "no_output": "Без текстового виводу.",
         "failed": "❌ Команда завершилася з помилкою (Код {code}).\nПомилка:\n{err}\nЧастковий вивід:\n{out}",

@@ -9,6 +9,8 @@ import queue
 import warnings
 from PIL import Image
 from core.i18n import lang
+from core.logger import logger
+import os
 
 # Hide technical warnings from MediaPipe / Protobuf
 warnings.filterwarnings("ignore", category=UserWarning, module='google.protobuf.symbol_database')
@@ -154,6 +156,16 @@ class VisionManager:
         states = self._get_finger_states(lm_list)
         return states == [True, True, False, False, False]
 
+    def _is_palm(self, lm_list):
+        """Checks if all 5 fingers are straight (Stop gesture)."""
+        states = self._get_finger_states(lm_list)
+        return states == [True, True, True, True, True]
+
+    def _is_thumbs_up(self, lm_list):
+        """Checks if only the thumb is straight (Confirm gesture)."""
+        states = self._get_finger_states(lm_list)
+        return states == [True, False, False, False, False]
+
     def _processing_worker(self):
         cv2.namedWindow("AXIS Vision V2.5", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("AXIS Vision V2.5", 640, 360)
@@ -216,6 +228,23 @@ class VisionManager:
                             if time.time() - self.last_screenshot_time > 3.0:
                                 self._queue_action("SCREENSHOT", None)
                                 self.last_screenshot_time = time.time()
+                        elif self._is_palm(lm_list):
+                            self.state = "STOP"
+                            # Trigger interruption logic here
+                            logger.critical("vision.interruption_detected")
+                            # We can send a signal to AxisCore to abort thinking
+                            if self.hud_bridge:
+                                self.hud_bridge.vision_update.emit({"state": "STOP"})
+                                
+                            # Forcefully terminate any subprocesses or block thinking
+                            # In a real app, this might set a global StopEvent
+                            os.environ["AXIS_INTERRUPT"] = "TRUE" 
+                        elif self._is_thumbs_up(lm_list):
+                            self.state = "CONFIRM"
+                            logger.info("vision.confirm_detected")
+                            if self.hud_bridge:
+                                self.hud_bridge.vision_update.emit({"state": "CONFIRM"})
+                            os.environ["AXIS_CONFIRM"] = "TRUE"
                         else:
                             x4, y4 = lm_list[4][1:]
                             x8, y8 = lm_list[8][1:]
@@ -315,6 +344,8 @@ class VisionManager:
         elif self.state == "SCREENSHOT": status_color = (255, 0, 255) # Magenta
         elif self.state == "VOLUME_CONTROL": status_color = (255, 0, 0) # Blue
         elif self.state == "MEDIA_CONTROL": status_color = (0, 165, 255) # Orange
+        elif self.state == "STOP": status_color = (0, 0, 255) # Bright Red
+        elif self.state == "CONFIRM": status_color = (0, 255, 255) # Yellow
         
         # Status Panel (Bottom Left)
         cv2.rectangle(img, (10, h - 70), (250, h - 20), (0, 0, 0), cv2.FILLED)
