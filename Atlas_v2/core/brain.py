@@ -135,6 +135,39 @@ class OllamaBrain(BaseBrain):
         logger.info("ollama.initialized", model=self.model_name, tools_count=len(self.tool_map))
         return True
 
+    def check_model_health(self) -> bool:
+        """
+        Checks if the configured Ollama server is accessible and if the required model is completely downloaded.
+        
+        Returns:
+            bool: True if the model is ready, False otherwise.
+        """
+        from core.logger import logger
+        
+        if not self.client:
+            logger.error("ollama.health_check_failed", reason="Ollama client is not initialized.")
+            return False
+            
+        try:
+            # Get list of all local models
+            models_response = self.client.list()
+            downloaded_models = [m.get("model", "") for m in models_response.get("models", [])]
+            
+            # Ollama models usually append a tag like ':latest'. We do a partial match check
+            # or an exact check depending on string formats.
+            model_exists = any(self.model_name in m for m in downloaded_models)
+            
+            if model_exists:
+                logger.info("ollama.model_ready", model=self.model_name, status="OK")
+                return True
+            else:
+                logger.warning("ollama.model_missing", model=self.model_name, action="Run 'ollama run <model_name>' first.")
+                return False
+                
+        except Exception as e:
+            logger.error("ollama.server_offline", error=str(e), suggestion="Ensure Ollama is running.")
+            return False
+
     def think(self, user_input: str) -> str:
         if not self.client:
             return "[OLLAMA OFFLINE]: Processing disabled due to missing 'ollama' package."
