@@ -28,11 +28,16 @@ class GeminiBrain(BaseBrain):
             # We don't raise here but wait for AxisCore to handle it if this brain is selected
             return False
             
+        from core.brain.blueprints import BlueprintManager
+        self.bp_manager = BlueprintManager()
+        self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
+
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(
             model_name='gemini-2.0-flash',
-            tools=available_tools if available_tools else None
+            tools=available_tools if available_tools else None,
+            system_instruction=self.bp_manager.get_system_prompt_addon()
         )
         
         # Create a chat session with automatic function calling
@@ -131,8 +136,15 @@ class OllamaBrain(BaseBrain):
             logger.error("ollama.missing", reason="ollama python package is not installed")
             return False
 
+        from core.brain.blueprints import BlueprintManager
+        self.bp_manager = BlueprintManager()
+        self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
+
         self.available_tools = available_tools
         self.system_prompt = self._build_tool_manifest(available_tools)
+        
+        # Add personality context to the system prompt
+        self.system_prompt += self.bp_manager.get_system_prompt_addon()
         
         # We start the chat history with the system prompt
         self.history = [
@@ -140,7 +152,10 @@ class OllamaBrain(BaseBrain):
         ]
         
         from core.logger import logger
-        logger.info("ollama.initialized", model=self.model_name, tools_count=len(self.tool_map))
+        logger.info("ollama.initialized", 
+                    model=self.model_name, 
+                    tools_count=len(self.tool_map),
+                    blueprint=self.bp_manager.active_blueprint.get("name"))
         return True
 
     def check_model_health(self) -> bool:
