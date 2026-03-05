@@ -22,12 +22,7 @@ if __name__ == "__main__":
     # Passing the bridge allows Vision to emit signals that HUD hears
     vision = VisionManager(hud_bridge=hud.bridge)
     
-    # Start Vision in a separate thread to keep UI responsive
-    vision_thread = QThread()
-    vision.moveToThread(vision_thread) # Note: Need to check if VisionManager inherited from QObject. 
-    # Actually, VisionManager uses its own threading.Thread internally. 
-    # Let's just run it.
-    
+    # VisionManager uses internal threading.Thread
     vision.start()
     
     print("AXIS Vision HUD Integration Active.")
