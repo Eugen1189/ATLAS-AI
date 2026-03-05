@@ -1,40 +1,24 @@
-# AXIS AI Agent — Cursor Rules
-# Full details: see AXIS_PLAYBOOK.md
+# Antigravity IDE Rules
 
-## Project Identity
-- Project name: AXIS (Agentic X-interface Intelligent System)
-- Language: Python 3.11.9
-- OS Target: Windows
+You are an AI Software Architect working on AXIS V2.5. 
+Follow these rules strictly:
 
-## Mandatory Rules
+## 🏛️ Level 1: Architectural Control (Anti-Chaos)
+- **[Modular.Isolation]**: Any new feature must be added as a separate "Skill". Do NOT edit `core/orchestrator.py` to add tool logic — use the auto-discovery system via `manifest.py`.
+- **[Dependency.Strict]**: Do NOT use `pip install` directly. If a library is needed, add it to `[project.dependencies]` in `pyproject.toml` first, then request an update.
+- **[Interface.Consistency]**: All new skills MUST return data in a String or JSON format, compatible with the ReAct parser of OllamaBrain.
 
-### 1. i18n — Zero Hardcoded Strings
-- NEVER write raw text in print(), logging, or Telegram messages.
-- ALWAYS use: `lang.get("key")` from `core.i18n`
-- ALWAYS add new keys to: `config/locales/en.json`, `uk.json`, `es.json`
+## 📝 Level 2: "Enterprise" Code Standards
+- **[Code.Logging]**: Do NOT use `print()`. For any state output, use `structlog.get_logger()`. Every log must contain context (e.g., `event="file_read"`, `path=path`).
+- **[Code.Typing]**: Use strict Python typing (Type Hints). Every function must have annotations for arguments and return types: `def func(param: str) -> bool:`.
+- **[Code.Documentation]**: Every method must contain a Google-style docstring. This is critical because OllamaBrain reads these docstrings to generate the tool manifest.
 
-### 2. Guardian Protocol
-- ANY destructive action (delete, git push, system change) MUST use `ask_user_confirmation()` from `telegram_bridge`.
+## 🛡️ Level 3: Security & Git-Hygiene
+- **[Git.TestBeforeCommit]**: Before considering a task finished, you MUST run `pytest`. If coverage drops below 80% or there is any FAIL — fix the code before presenting it to the user.
+- **[Git.AtomicCommits]**: If performing multiple tasks, make a separate commit for each logical step (e.g., "feat: add weather skill" separate from "refactor: update logger").
+- **[Safety.NoSecrets]**: Automatically check code for hardcoded keys. If you see `API_KEY = "..."`, immediately move it to `.env` and use `os.getenv()`.
 
-### 3. Code Quality
-- Type hints: REQUIRED on every function signature
-- Docstrings: Google-style on every public class and method
-- No bare `print()` in production — use `logging` to `logs/axis.log`
-- Error handling: always catch exceptions and report via `lang.get()`
-
-### 4. Architecture
-- `core/` — orchestration only, no skill logic
-- `agent_skills/` — one subfolder per skill, self-contained
-- Skills must NOT import from each other directly
-- Use `mcp_hub` for file/GitHub access when available
-
-### 5. Windows Environment
-- Use `encoding='utf-8'` when opening files
-- Background threads must use `daemon=True`
-
-## New Skill Checklist
-1. Create folder under `agent_skills/`
-2. Add `manifest.py` with functions + EXPORTED_TOOLS list
-3. Use `lang.get()` for all output strings
-4. Apply Guardian Protocol to destructive actions
-5. Add locale keys to all 3 JSON files
+## 🧠 Level 4: Antigravity IDE Specifics
+- **[Context.Awareness]**: Before writing code, read the existing `pyproject.toml` to know which library versions are already used, and `core/logger.py` to inherit the logging style.
+- **[Context.NoShadowing]**: Always check that you are not shadowing existing system modules or global project variables (like the `lang` case).
+- **[Guardian.Protocol]**: Respect Guardian Protocol: confirm destructive actions via the Telegram skill.
