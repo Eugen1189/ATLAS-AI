@@ -56,7 +56,7 @@ class TestCoverageBooster(unittest.TestCase):
         logic.cv2.flip = MagicMock(return_value=frame)
         logic.cv2.cvtColor = MagicMock(return_value=frame)
         logic.cv2.resize = MagicMock(return_value=frame)
-        logic.cv2.waitKey = MagicMock(side_effect=[ord('q')])
+        logic.cv2.waitKey = MagicMock(side_effect=lambda x: ord('q') if manager.is_running else -1)
         logic.cv2.getTextSize = MagicMock(return_value=((100, 20), 10))
         
         manager._processing_worker()
