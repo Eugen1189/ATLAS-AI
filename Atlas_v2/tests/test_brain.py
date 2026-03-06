@@ -5,9 +5,10 @@ from core.brain import GeminiBrain, OllamaBrain, BrainFactory
 
 class TestBrain(unittest.TestCase):
 
-    @patch('core.brain.genai')
+    @patch('google.generativeai.configure')
+    @patch('google.generativeai.GenerativeModel')
     @patch('core.brain.blueprints.BlueprintManager')
-    def test_gemini_brain(self, mock_bp, mock_genai):
+    def test_gemini_brain(self, mock_bp, mock_genai_model, mock_genai_config):
         brain = GeminiBrain()
         
         # Test init without API key
@@ -19,10 +20,10 @@ class TestBrain(unittest.TestCase):
         # Test init with API key
         with patch.dict(os.environ, {"GEMINI_API_KEY": "test_key"}):
             mock_model = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_model
+            mock_genai_model.return_value = mock_model
             
             self.assertTrue(brain.initialize([]))
-            mock_genai.configure.assert_called_with(api_key="test_key")
+            mock_genai_config.assert_called_with(api_key="test_key")
             
             # Test think
             brain.chat_session = MagicMock()
@@ -64,13 +65,18 @@ class TestBrain(unittest.TestCase):
                     'content': '```json\n{"tool_name": "dummy_tool", "arguments": {}}\n```'
                 }
             }
+            mock_review_response = {
+                'message': {
+                    'content': 'CONFIDENCE: 100% | STATUS: APPROVED | REASON: Safe'
+                }
+            }
             # Next response after feeding tool output
             mock_response_2 = {
                 'message': {
                     'content': 'Final answer'
                 }
             }
-            brain.client.chat.side_effect = [mock_response, mock_response_2]
+            brain.client.chat.side_effect = [mock_response, mock_review_response, mock_response_2]
             
             res = brain.think("test input")
             self.assertEqual(res, "Final answer")

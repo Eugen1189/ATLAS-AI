@@ -22,6 +22,9 @@ def boot_sequence():
     print(lang.get("system.welcome"))
     axis = AxisCore()
     
+    from core.brain.healer import Healer
+    Healer().summarize_evolution()
+    
     # Start Telegram listener in background, passing the AXIS brain to it
     start_telegram_listener(axis)
     

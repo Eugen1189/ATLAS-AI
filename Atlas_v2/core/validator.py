@@ -7,25 +7,12 @@ import re
 
 class SecurityValidator:
     """Validates commands and code for security risks."""
-    
-    DANGEROUS_PATTERNS = [
-        r"rm\s+-rf\s+/",            # Root deletion
-        r"format\s+[A-Z]:",         # Disk formatting
-        r"del\s+/s\s+/q\s+C:",      # Windows mass deletion
-        r"powershell\s+.*-ExecutionPolicy\s+Bypass", # Policy bypass
-        r"mkfs\..*",                 # Filesystem creation
-        r"> /dev/sd[a-z]",          # Direct disk write
-        r":\(\){ :\|:& };:",        # Fork bomb
-    ]
 
     @staticmethod
     def is_safe_command(command: str) -> bool:
         """Checks if a shell command contains known dangerous patterns."""
-        for pattern in SecurityValidator.DANGEROUS_PATTERNS:
-            if re.search(pattern, command, re.IGNORECASE):
-                logger.warning("security.dangerous_command_detected", command=command, pattern=pattern)
-                return False
-        return True
+        from core.security.guard import SecurityGuard
+        return SecurityGuard.is_safe_command(command)
 
     @staticmethod
     def validate_python_syntax(code: str) -> bool:
