@@ -72,8 +72,25 @@ class AxisCore:
         
         return tools
 
-    def think(self, user_input: str) -> str:
-        # Delegate thinking to the selected brain backend
+    def think(self, user_input: str, source: str = "terminal") -> str:
+        """
+        Process user input. Applies Firewall checks before delegating to Brain.
+        source: 'terminal' | 'telegram:<chat_id>' | 'api'
+        """
+        from core.security.firewall import axis_firewall, SecurityViolation
+
+        # --- Layer 1: Rate Limiter ---
+        if not axis_firewall.is_request_allowed(source=source):
+            logger.warning("system.rate_limited", source=source)
+            return f"⛔ Rate limit exceeded. Maximum {axis_firewall.max_requests} requests per {axis_firewall.window_sec}s. Please wait before sending another command."
+
+        # --- Layer 2: Prompt Injection + Payload Validator ---
+        try:
+            user_input = axis_firewall.sanitize_input(user_input, source=source)
+        except SecurityViolation as e:
+            logger.warning("system.security_violation", source=source, error=str(e))
+            return f"🛡️ Security violation: {e}"
+
         logger.debug("system.user_input", content=user_input)
         response = self.brain.think(user_input)
         logger.debug("system.agent_response", content=response)

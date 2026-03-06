@@ -18,6 +18,10 @@ def _poll_telegram(axis_core):
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     
+    # Whitelist: comma-separated allowed user IDs. Falls back to the main chat_id if not set.
+    raw_allowed = os.getenv("TELEGRAM_ALLOWED_IDS", chat_id or "")
+    allowed_ids = {uid.strip() for uid in raw_allowed.split(",") if uid.strip()}
+    
     if not bot_token or not chat_id:
         print(lang.get("telegram.keys_not_found"))
         return
@@ -72,6 +76,14 @@ def _poll_telegram(axis_core):
                             continue
                             
                     message = update.get("message", {})
+                    sender_id = str(message.get("from", {}).get("id", ""))
+                    
+                    # --- Whitelist Check ---
+                    if sender_id and allowed_ids and sender_id not in allowed_ids:
+                        from core.logger import logger
+                        logger.warning("telegram.unauthorized_user", sender_id=sender_id)
+                        # Silently ignore unauthorized senders (don't reveal the bot exists)
+                        continue
                     
                     if str(message.get("chat", {}).get("id")) == str(chat_id):
                         text = message.get("text")
@@ -92,8 +104,10 @@ def _poll_telegram(axis_core):
                             print(lang.get("telegram.incoming_text", text=text))
                             
                             try:
+                                # Tag source with sender's Telegram ID for per-user rate limiting
+                                tg_source = f"telegram:{sender_id or chat_id}"
                                 context_prompt = f"(Telegram message): {text}"
-                                reply = axis_core.think(context_prompt)
+                                reply = axis_core.think(context_prompt, source=tg_source)
                                 
                                 print(lang.get("telegram.outgoing_reply"))
                                 requests.post(send_url, json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"})
