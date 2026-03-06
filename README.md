@@ -1,8 +1,9 @@
 # 🌌 AXIS V2.5: Autonomous Spatial AI & MCP Framework
 
-**AXIS** (Agentic X-interface Intelligent System) is a state-of-the-art multimodal AI Agentic Framework powered by **Google Gemini 2.0 Flash**. Unlike traditional LLM wrappers, AXIS bridges the gap between physical human gestures, local OS operations, and cloud intelligence through a standardized **Model Context Protocol (MCP)** architecture.
+**AXIS** (Agentic X-interface Intelligent System) is a state-of-the-art multimodal AI Agentic Framework powered by **Google Gemini 2.0 Flash** and local **Ollama** (Llama 3.2). Unlike traditional LLM wrappers, AXIS bridges the gap between physical human gestures, local OS operations, and cloud intelligence through a standardized **Model Context Protocol (MCP)** architecture.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-80%25%20coverage-brightgreen.svg)](#)
 [![Node.js](https://img.shields.io/badge/Node.js-v24.14.0-green.svg)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.11.9-blue.svg)](https://www.python.org/)
 [![Localization](https://img.shields.io/badge/Localization-EN%20%7C%20UK%20%7C%20ES-orange.svg)](#-internationalization-i18n)
@@ -19,22 +20,26 @@ AXIS transforms your workspace into a 3D interface using MediaPipe and OpenCV:
   - **Media Zone (Bottom 15%):** Swipe gestures for track navigation and "Pinch" for Play/Pause.
 - **🙅‍♂️ Sleep Gesture (Kill-Switch):** Cross your arms for 1.5 seconds to fully shut down the Vision Engine, releasing the camera and all CPU resources.
 
-### 🔌 MCP Native Ecosystem
-Deep integration with the **Model Context Protocol** (Anthropic) allows AXIS to act as a secure host for local resources:
-- **Filesystem MCP:** Standardized read/write access to project directories.
-- **GitHub MCP:** Autonomous repository management (commits, issues, and PRs).
-- **Background Bridge:** Automated Node.js (`npx`) server orchestration with robust path-resolution for Windows environments.
+### �️ Эшелонована Оборона (Defense-in-Depth)
+AXIS implements a 4-layer security perimeter before any request reaches the LLM:
 
-### 🛡️ The Guardian Protocol & SecurityGuard
-- **Enterprise Pre-flight Check:** A `SecurityGuard` layer intercepts all tool executions, performing directory-level sandbox validations and preventing accidental core system rewrites (like `rm -rf` or UI modification).
+| Layer | Module | Protection |
+| :---: | :--- | :--- |
+| 1 | `telegram_bridge` | **Whitelist** — only `TELEGRAM_ALLOWED_IDS` can send commands |
+| 2 | `core/security/firewall.py` | **Rate Limiter** — max 5 req/min per unique source (DoS protection) |
+| 3 | `core/security/firewall.py` | **Prompt Sanitizer** — blocks injection patterns & payload > 4000 chars |
+| 4 | `core/security/guard.py` | **Pre-flight Guard** — prevents tool execution on system-critical paths |
+
 - **Human-in-the-Loop:** AXIS pauses critical operations (e.g., file deletion, `git push`) and waits for your explicit ✅ / ❌ confirmation via Telegram before proceeding.
+- **Confidence Score:** Before executing any tool, the AI rates its own confidence (0–100%). Actions below 70% are automatically blocked and flagged for user confirmation.
 - **Privacy HUD:** High-visibility `🟢 LIVE` / `⚪ IDLE` indicators on the Vision overlay ensure you are always aware of your camera's active status.
 
 ### 🧠 Adaptive Artificial Intelligence
 Unlike static agents, AXIS learns from its mistakes:
 - **Healer Brain (Post-Mortem):** When a tool loop fails, AXIS summons a localized "Healer" instance to analyze the error trace and synthesize a new *Dynamic Micro-Rule*.
-- **Self-Improving System Prompt:** Learned rules are stored in `dynamic_rules.json` and injected into the prompt upon every boot, meaning AXIS becomes smarter and more tailored to your specific project over time.
-- **Double-Pass Reasoning:** High-risk actions undergo an "Internal Review" pass. If the AI is `<70%` confident in its generated tool arguments, execution is blocked.
+- **Self-Improving System Prompt:** Learned rules are stored in `memories/dynamic_rules.json` and injected into the prompt upon every boot — AXIS becomes smarter on each run.
+- **Double-Pass Reasoning:** High-risk actions undergo an "Internal Review" pass. If the AI is `<70%` confident, execution is blocked and logged.
+- **Evolution Report:** On every boot, AXIS prints a `🧬 [AXIS EVOLUTION REPORT]` listing all micro-rules learned from past failures.
 
 ### 🔍 Hybrid Intelligence Engine
 A dual-layered research module located in `agent_skills/web_research`:
@@ -44,8 +49,8 @@ A dual-layered research module located in `agent_skills/web_research`:
 ### 📱 Real-time Telegram Bridge
 A robust, asynchronous communication layer providing:
 - Instant visual reports (screenshots + JSON logs).
-- Remote command execution from anywhere.
-- System status notifications and Guardian confirmations.
+- Remote command execution from anywhere in the world.
+- System status notifications, Guardian confirmations, and Whitelist enforcement.
 
 ---
 
@@ -54,14 +59,14 @@ A robust, asynchronous communication layer providing:
 AXIS utilizes a **Dynamic Skill Discovery** system — drop a new folder into `agent_skills/` and it's automatically loaded on the next boot.
 
 ```text
-AXIS_v2/
+ATLAS_v2/
 ├── agent_skills/          # 🧩 Pluggable skills
 │   ├── audio_interface/   # Voice Speech-To-Text & TTS
 │   ├── file_master/       # File system read/write operations
 │   ├── mcp_hub/           # Node.js MCP Bridge connection
 │   ├── memory_manager/    # SQLite long-term memory
 │   ├── os_control/        # PyAutoGUI screen automation
-│   ├── telegram_bridge/   # Async Telegram bot & confirmations
+│   ├── telegram_bridge/   # Async Telegram bot, Whitelist & confirmations
 │   ├── terminal_operator/ # PowerShell/CMD command execution
 │   ├── vision_eye/        # Computer Vision & MediaPipe logic
 │   ├── web_research/      # Google Search & Perplexity AI
@@ -69,15 +74,21 @@ AXIS_v2/
 ├── config/
 │   └── locales/           # 🌐 i18n JSON files (en.json, uk.json, es.json)
 ├── core/
-│   ├── orchestrator.py    # 🧠 Gemini/Ollama brain & tool dispatcher
-│   ├── security/guard.py  # 🛡️ Centralized SecurityGuard validation
+│   ├── brain/
+│   │   ├── __init__.py    # 🧠 OllamaBrain (Llama) / GeminiBrain — ReAct engine
+│   │   ├── healer.py      # 🩺 Post-Mortem Healer + Evolution Report
+│   │   └── blueprints/    # Personality profiles (default.yaml, etc.)
+│   ├── security/
+│   │   ├── firewall.py    # 🔥 DoS/Injection defence (Rate Limit + Sanitizer)
+│   │   └── guard.py       # 🛡️ Pre-flight path & command validator
+│   ├── orchestrator.py    # 🎯 Skill loader & Firewall gateway
 │   └── i18n.py            # Language module
-├── memories/              # 💾 SQLite DB and vision snapshots
-└── main.py                # 🚀 Bootloader
+├── memories/              # 💾 SQLite DB, dynamic_rules.json & vision snapshots
+└── main.py                # 🚀 Bootloader (prints Evolution Report on start)
 ```
 
-- **Orchestrator:** Scans `agent_skills/*/manifest.py` on boot to dynamically register function-calling tools for Gemini or Ollama.
-- **Memory Manager:** Persistent SQLite-backed context for user preferences, long-term fact retention, and `dynamic_rules.json` storage.
+- **Orchestrator:** Scans `agent_skills/*/manifest.py` on boot to dynamically register Gemini function-calling tools.
+- **Memory Manager:** Persistent SQLite-backed context for user preferences and long-term fact retention.
 - **Localization (i18n):** Full multi-language support (EN, UK, ES) via `core/i18n.py` and JSON locale files.
 
 ---
@@ -86,11 +97,13 @@ AXIS_v2/
 
 | Component | Technology |
 | :--- | :--- |
-| **Core Language** | Python 3.11.9+ |
+| **Core Language** | Python 3.11.9 |
 | **AI Brains** | Google Gemini 2.0 Flash / **Local Ollama** (Llama 3.2) |
+| **Security Layer** | `AxisFirewall` (Rate Limiter + Prompt Sanitizer), `SecurityGuard` (Path Validator) |
 | **MCP Runtime** | Node.js v24.14.0 *(bleeding-edge MCP support)* |
 | **Vision Engine** | MediaPipe 0.10.14, OpenCV 4.13 |
-| **Adaptive Logic** | Dynamic Healer Instance, Self-Modifying System Prompts |
+| **Adaptive Logic** | Healer Brain, Dynamic Micro-Rules, Self-Modifying Prompts |
+| **Voice** | SpeechRecognition (STT), OpenAI TTS |
 | **Research** | Perplexity AI (sonar model) |
 
 ---
@@ -118,6 +131,15 @@ GEMINI_API_KEY=your_google_ai_studio_key
 TELEGRAM_BOT_TOKEN=your_botfather_token
 TELEGRAM_CHAT_ID=your_numeric_chat_id
 
+# --- AI Brain Selection ---
+AI_BRAIN=gemini   # Options: gemini | ollama
+OLLAMA_MODEL=llama3.2  # Used when AI_BRAIN=ollama
+
+# --- Security ---
+# Comma-separated Telegram user IDs allowed to control AXIS (whitelist)
+# Get your ID via @userinfobot in Telegram
+TELEGRAM_ALLOWED_IDS=123456789,987654321
+
 # --- Localization ---
 LANGUAGE=en  # Options: en | uk | es
 
@@ -131,6 +153,7 @@ GITHUB_PERSONAL_ACCESS_TOKEN=your_pat  # For GitHub MCP
 > - `GEMINI_API_KEY` → [Google AI Studio](https://aistudio.google.com/)
 > - `TELEGRAM_BOT_TOKEN` → Create a bot via [@BotFather](https://t.me/BotFather)
 > - `TELEGRAM_CHAT_ID` → Send a message to your bot, then call `https://api.telegram.org/bot<TOKEN>/getUpdates`
+> - `TELEGRAM_ALLOWED_IDS` → Send `/start` to [@userinfobot](https://t.me/userinfobot) to get your numeric user ID
 
 ### 4. Launch AXIS
 ```bash
@@ -158,17 +181,16 @@ AXIS accepts natural language commands via terminal text, voice input (press ENT
 
 Our mission is **100% data privacy, zero token costs, and total autonomy**.
 
-| Component | Current (Cloud-Based) | Transitioning To (Local-First) |
+| Component | Current (Cloud-Based) | Future (Local-First) |
 | :--- | :--- | :--- |
-| **LLM Core** | Google Gemini 2.0 Flash | **[Completed]** Ollama (Llama 3.2 / Mistral) natively supported via `AI_BRAIN=ollama` |
-| **Reasoning Engine**| Cloud-based one-shot queries | **[Completed]** Double-Pass Internal Review & Streaming Thought parsing |
-| **Vision Analysis** | Gemini Vision API | **[Next]** Moondream2 or LLaVA integration |
-| **Speech-to-Text** | Google STT | **[Next]** OpenAI Whisper (local) |
+| **LLM Core** | Google Gemini 2.0 Flash | **Ollama** (Llama 3 / Mistral) |
+| **Vision Analysis** | Gemini Vision API | **Moondream2** or **LLaVA** |
+| **Speech-to-Text** | Google STT | **OpenAI Whisper** (local) |
 
 ### Migration Phases
-1. ✅ **Phase 1 — Local LLM Integration:** Full Ollama ReAct adapter, Multi-JSON tool parsing, and streaming `<thought>` tags implemented.
-2. 🔄 **Phase 2 — Autonomous Immunity:** The "Healer Brain", dynamic rule discovery, and SecurityGuard sandbox limits. *(Done)*
-3. 🚧 **Phase 3 — Iron Man HUD:** A PyQt6 semi-transparent desktop overlay for real-time gesture zone visualization.
+1. ✅ **Phase 1 — Local LLM Integration:** Full Ollama ReAct adapter, Multi-JSON tool parsing, streaming `<thought>` tags implemented.
+2. ✅ **Phase 2 — Autonomous Immunity:** Healer Brain, dynamic rule discovery, SecurityGuard, AxisFirewall, Whitelist, Confidence Score. *(Done)*
+3. 🚧 **Phase 3 — Iron Man HUD:** A PyQt6 semi-transparent desktop overlay displaying real-time Confidence Score, tool execution status, and gesture zones.
 
 ---
 
