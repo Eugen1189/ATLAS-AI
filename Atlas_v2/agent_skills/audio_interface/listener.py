@@ -76,39 +76,32 @@ def listen_command(silent: bool = False) -> str:
         return ""
 
 def _voice_listener_loop(axis_core):
-    """Background loop for phrase recognition."""
-    print("🎙️ [AXIS]: Background Voice Listener ACTIVE (Silent Mode)")
-    print("💡 Tip: Use wake words 'Аксис', 'Аксіс' or 'Axis' to trigger voice commands.")
+    """Background loop for phrase recognition with Wake-Word Activation."""
+    print("🎙️ [AXIS]: Background Voice Listener ACTIVE (Wait for 'Аксис' Mode)")
+    wake_words = ["аксис", "аксіс", "axis"]
     
     while True:
         try:
-            # Visual feedback in terminal
-            # Note: silent=True keeps it clean, but we want a small indicator when it hears something
+            # 1. Wait for Wake-Word in Silent mode
             text = listen_command(silent=True)
-            
             if text:
                 query = text.strip().lower()
-                wake_words = ["аксис", "аксіс", "axis"]
-                
-                # Check if query contains any wake word
                 if any(word in query for word in wake_words):
-                    # Clean the query from the wake word to get the actual command
-                    for word in wake_words:
-                        query = query.replace(word, "").strip()
+                    # 2. Recognition Confirmation
+                    print("🔔 [WAKE WORD DETECTED]")
+                    axis_core.think("озвуч 'Слухаю вас, Командоре'")
                     
-                    if not query:
-                        # Natural language command to the brain
-                        axis_core.think("озвуч 'Слухаю вас, Командоре'")
-                        continue
-
-                    print(f"👂 [MICROPHONE]: {text}")
-                    print(f"🧠 [PROCESSING]: {query}")
+                    # 3. Capture command (with dedicated visual feedback)
+                    print("🚀 [LISTENING FOR COMMAND...]")
+                    command_text = listen_command(silent=False)
                     
-                    source = "voice"
-                    # We send the cleaned command to the brain
-                    response = axis_core.think(query, source=source)
-                    
-                    print(f"🤖 [AXIS REPLY]: {response}")
+                    if command_text:
+                        print(f"👂 [MICROPHONE]: {command_text}")
+                        source = "voice"
+                        response = axis_core.think(command_text, source=source)
+                        print(f"🤖 [AXIS REPLY]: {response}")
+                    else:
+                        print("💤 [TIMEOUT] Back to idle.")
                 
         except Exception as e:
             from core.logger import logger
