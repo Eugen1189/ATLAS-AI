@@ -76,37 +76,48 @@ def listen_command(silent: bool = False) -> str:
         return ""
 
 def _voice_listener_loop(axis_core):
-    """Background loop for phrase recognition with Wake-Word Activation."""
-    print("🎙️ [AXIS]: Background Voice Listener ACTIVE (Wait for 'Аксис' Mode)")
+    """Background loop with 'Phrase-Burst' logic (Wake + Command in one go)."""
+    print("🎙️ [AXIS]: Voice Listener ACTIVE (Local-First Listening)")
     wake_words = ["аксис", "аксіс", "axis"]
     
     while True:
         try:
-            # 1. Wait for Wake-Word in Silent mode
+            # 1. Listen in silent mode for the wake word
             text = listen_command(silent=True)
             if text:
                 query = text.strip().lower()
-                if any(word in query for word in wake_words):
-                    # 2. Recognition Confirmation
-                    print("🔔 [WAKE WORD DETECTED]")
-                    axis_core.think("озвуч 'Слухаю вас, Командоре'")
+                
+                # Check if wake word is present
+                trigger_word = next((w for w in wake_words if w in query), None)
+                
+                if trigger_word:
+                    print(f"🔔 [EVENT]: {trigger_word.upper()} DETECTED")
                     
-                    # 3. Capture command (with dedicated visual feedback)
-                    print("🚀 [LISTENING FOR COMMAND...]")
-                    command_text = listen_command(silent=False)
+                    # Clean the command part: "Аксис зроби скріншот" -> "зроби скріншот"
+                    clean_command = query.replace(trigger_word, "").strip()
                     
-                    if command_text:
-                        print(f"👂 [MICROPHONE]: {command_text}")
-                        source = "voice"
-                        response = axis_core.think(command_text, source=source)
+                    if clean_command:
+                        # Case A: User said wake word + command in one phrase
+                        print(f"👂 [DIRECT COMMAND]: {clean_command}")
+                        response = axis_core.think(clean_command, source="voice")
                         print(f"🤖 [AXIS REPLY]: {response}")
                     else:
-                        print("💤 [TIMEOUT] Back to idle.")
+                        # Case B: User said ONLY wake word, wait for input
+                        axis_core.think("озвуч 'Слухаю вас, Командоре'")
+                        print("🚀 [LISTENING FOR COMMAND...]")
+                        command_text = listen_command(silent=False)
+                        
+                        if command_text:
+                            print(f"👂 [FOLLOW-UP]: {command_text}")
+                            response = axis_core.think(command_text, source="voice")
+                            print(f"🤖 [AXIS REPLY]: {response}")
+                        else:
+                            print("💤 [TIMEOUT] Returning to sleep.")
                 
         except Exception as e:
             from core.logger import logger
-            logger.error("audio.listener_loop_error", error=str(e))
-            time.sleep(2) # Pause on error
+            logger.error(f"audio.listener_loop_error: {e}")
+            time.sleep(1)
         
         time.sleep(0.1)
 
