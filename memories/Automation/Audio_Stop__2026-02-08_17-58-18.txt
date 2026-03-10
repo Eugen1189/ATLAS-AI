@@ -1,1 +1,0 @@
-User requests to stop music. AI initiates recording process to execute the command and prompts for confirmation.

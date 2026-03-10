@@ -1,30 +1,32 @@
+import json
 from googlesearch import search
 from core.i18n import lang
 from core.logger import logger
+from core.skills.wrapper import agent_tool
 
-def google_research(query: str, num_results: int = 5, search_lang: str = "uk") -> list[str]:
+@agent_tool
+def google_research(query: str, **kwargs) -> list[str]:
     """
     Performs a quick search in Google and returns a list of relevant URLs.
-    Use this tool when you need to quickly find an official website,
-    fact-check, or find sources for further analysis.
-    
-    Args:
-        query: Search query.
-        num_results: Number of results (default is 5).
-        search_lang: Search language (default is "uk").
-        
-    Returns:
-        A list of found URLs.
     """
-    logger.info("web.searching_google", query=query, lang=search_lang)
-    results = []
+    num_results = kwargs.get("num_results", 5)
+    search_lang = kwargs.get("search_lang", "uk")
+    
+    results = [] 
+    # Standardize input type
+    n = int(num_results)
+    
+    # 2026 Ironclad Search: Try multiple parameter names for library compatibility
     try:
-        # advanced=True allows getting descriptions, but URLs are enough for simple search
-        for url in search(query, num_results=num_results, lang=search_lang):
-            results.append(url)
-            logger.debug("web.found_google", url=url)
-        return results
-    except Exception as e:
-        error_msg = lang.get("web.google_error", error=e)
-        logger.error("web.google_search_failed", query=query, error=str(e))
-        return [error_msg]
+        # Try googlesearch-python style
+        search_gen = search(query, num_results=n, lang=search_lang)
+    except TypeError:
+        # Fallback to google style (stop)
+        search_gen = search(query, stop=n, lang=search_lang)
+    
+    for url in search_gen:
+        results.append(url)
+        logger.debug("web.found_google", url=url)
+        if len(results) >= n: break
+        
+    return results if results else ["No results found."]

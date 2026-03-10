@@ -1,1 +1,0 @@
-User requests AI to perform a ping test. AI returns an unreadable string, likely an error or garbled response.

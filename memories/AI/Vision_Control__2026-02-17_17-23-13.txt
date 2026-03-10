@@ -1,1 +1,0 @@
-User requests visual control activation, resulting in the internal command INTERNAL:vision:start.

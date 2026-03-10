@@ -1,1 +1,0 @@
-User requests system diagnosis via 'Atlas'. AI acknowledges request and routes it to the Operations Department.

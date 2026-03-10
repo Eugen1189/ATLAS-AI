@@ -1,1 +1,0 @@
-User requested a system scan. The AI provided a diagnostic report including OS, Python version, user, resource usage (CPU, RAM, Disk), installed libraries, and file status (present/missing).

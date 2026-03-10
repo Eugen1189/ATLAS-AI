@@ -1,1 +1,0 @@
-User requested to open notepad, AI failed due to missing path configuration in launcher.py.

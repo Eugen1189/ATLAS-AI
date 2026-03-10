@@ -1,1 +1,0 @@
-User requests to enable gestures; system initiates vision processing.

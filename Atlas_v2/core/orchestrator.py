@@ -20,12 +20,39 @@ from core.brain import BrainFactory
 class AxisCore:
     """Main logic for the AXIS agent orchestrator."""
     def __init__(self):
-        logger.info("system.booting", version="2.5.0")
+        logger.info("system.booting", version="2.6.2")
         
-        # 1. Load tools first
+        # 1. First Pass: Discovery (Zero-Config)
+        primary_workspace = None
+        try:
+            from core.system.discovery import EnvironmentDiscoverer
+            discoverer = EnvironmentDiscoverer()
+            findings = discoverer.run_full_discovery(store_in_memory=False)
+            primary_workspace = findings.get("primary_workspace")
+            
+            # Security: Apply Scoped Trust
+            from core.security.guard import SecurityGuard
+            if primary_workspace:
+                SecurityGuard.set_workspace(primary_workspace)
+            else:
+                SecurityGuard.set_workspace(os.getcwd())
+        except Exception as e:
+            logger.warning("system.discovery_failed", error=str(e))
+
+        # 2. Memory Context: Set Namespace
+        namespace = "default"
+        if primary_workspace:
+            # Use folder name as namespace, or a hash if we want more precision
+            namespace = os.path.basename(primary_workspace).lower()
+
+        # Update global memory_manager namespace before brain init
+        from core.brain.memory import memory_manager
+        memory_manager.switch_namespace(namespace)
+
+        # 3. Load skills
         self.available_tools = self._load_skills()
         
-        # 2. Initialize the brain
+        # 4. Initialize the brain
         self.brain = BrainFactory.create_brain()
         
         try:
@@ -37,7 +64,7 @@ class AxisCore:
             logger.critical("system.core_fatal_error", error=str(e))
             raise
 
-        logger.info("system.core_init_success", count=len(self.available_tools))
+        logger.info("system.core_init_success", count=len(self.available_tools), namespace=namespace)
 
     def _load_skills(self):
         """Scans the agent_skills folder and loads EXPORTED_TOOLS from each skill's manifest.py."""

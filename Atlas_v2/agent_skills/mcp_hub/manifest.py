@@ -1,36 +1,23 @@
+﻿import asyncio
 from .bridge import get_bridge
-import asyncio
-from core.i18n import lang
 
-# Workaround for synchronous orchestrator (if it's not fully Async yet)
-def send_to_mcp_sync(server_name: str, tool_name: str, args_dict: dict):
-    """
-    Call a tool on an external MCP Server from Gemini.
-    This function is exported for the orchestrator.
-    """
+def call_mcp_tool(server: str, tool: str, args: dict) -> str:
+    """Standard 2026 Ecosystem Bridge (MCP). Connects to external services (Docker, GitHub, Notion)."""
     bridge = get_bridge()
-    if server_name not in bridge.sessions:
-        return lang.get("mcp.conn_failed", name=server_name, error="Not Connected")
-    
-    # Execute async call (temporary solution for threading)
-    session = bridge.sessions[server_name]
-    
-    async def _call():
-        return await session.call_tool(tool_name, arguments=args_dict)
-    
+    if server not in bridge.sessions: return f"Err: MCP Server '{server}' not connected."
+    s = bridge.sessions[server]
+    async def _do(): return await s.call_tool(tool, arguments=args)
     try:
+        import nest_asyncio
+        nest_asyncio.apply()
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # We are already in an async loop
-            import nest_asyncio
-            nest_asyncio.apply()
-            task = asyncio.ensure_future(_call())
-            return loop.run_until_complete(task)
-        else:
-            return loop.run_until_complete(_call())
-    except Exception:
-        return loop.run_until_complete(_call())
+        return loop.run_until_complete(_do())
+    except Exception as e: return f"MCP Call Err: {e}"
 
-EXPORTED_TOOLS = [
-    send_to_mcp_sync
-]
+def list_mcp_capabilities() -> str:
+    """Lists all available servers and their tools via Model Context Protocol."""
+    bridge = get_bridge()
+    if not bridge.sessions: return "Memory: No MCP servers currently active."
+    return f"### Active MCP Ecosystem:\nActive Servers: {list(bridge.sessions.keys())}"
+
+EXPORTED_TOOLS = [call_mcp_tool, list_mcp_capabilities]

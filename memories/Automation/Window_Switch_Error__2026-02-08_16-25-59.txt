@@ -1,1 +1,0 @@
-User requested to switch window without specifying the window name. AI returned an error.

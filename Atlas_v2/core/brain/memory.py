@@ -4,26 +4,51 @@ import requests
 import numpy as np
 from datetime import datetime
 from core.logger import logger
+from core.brain.vector_store import VectorStore
+from core.brain.rag_retriever import RAGRetriever
 
 class MemoryManager:
     """
     Manages the long-term project context and facts for AXIS.
     Prevents 'Amnesia' by storing and retrieving key project metadata.
     """
-    def __init__(self):
+    def __init__(self, namespace="default"):
         # Path: Atlas_v2/../memories/facts.json
         self.memories_dir = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "memories"
         ))
         os.makedirs(self.memories_dir, exist_ok=True)
-        self.facts_file = os.path.join(self.memories_dir, "facts.json")
-        self.embeddings_file = os.path.join(self.memories_dir, "embeddings.json")
+        self.namespace = namespace
+        
+        # Namespaced Facts and Embeddings
+        self.facts_file = os.path.join(self.memories_dir, f"facts_{namespace}.json")
+        self.embeddings_file = os.path.join(self.memories_dir, f"embeddings_{namespace}.json")
         
         self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         self.embed_model = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
         
         self.facts = self._load_facts()
         self.embeddings = self._load_embeddings()
+
+        # --- RAG Memory (Namespaced) ---
+        try:
+            from core.brain.vector_store import VectorStore
+            from core.brain.rag_retriever import RAGRetriever
+            self.vector_store = VectorStore(namespace=namespace)
+            self.rag = RAGRetriever(vector_store=self.vector_store)
+            logger.info("memory.rag_initialized",
+                        namespace=namespace,
+                        available=self.rag.is_available)
+        except Exception as e:
+            logger.warning("memory.rag_init_failed", error=str(e))
+            self.vector_store = None
+            self.rag = None
+
+    def switch_namespace(self, new_namespace: str):
+        """Switches the memory context to a different project/namespace."""
+        if new_namespace == self.namespace: return
+        logger.info("memory.switching_namespace", old=self.namespace, new=new_namespace)
+        self.__init__(namespace=new_namespace)
 
     def _load_facts(self) -> dict:
         """Loads facts from JSON file."""
@@ -63,6 +88,7 @@ class MemoryManager:
     def store_fact(self, key: str, value: str, semantic: bool = True):
         """
         Stores a fact in the long-term context.
+        Dual-writes to JSON facts file and RAG vector store.
         """
         self.facts[key] = {
             "value": value,
@@ -72,6 +98,21 @@ class MemoryManager:
         self._save_facts()
         logger.info("memory.fact_stored", key=key)
         
+        # --- RAG: Also store in vector DB ---
+        if self.rag and self.rag.is_available:
+            try:
+                self.vector_store.upsert_documents([{
+                    "text": f"[FACT] {key}: {value}",
+                    "source": f"fact::{key}",
+                    "chunk_index": 0,
+                    "metadata": {
+                        "type": "fact",
+                        "key": key,
+                    }
+                }])
+            except Exception as e:
+                logger.warning("memory.rag_fact_store_error", error=str(e))
+
         if semantic:
             import threading
             def _bg_embed():
@@ -122,31 +163,40 @@ class MemoryManager:
     def get_context_for_prompt(self, limit: int = 10, query: str = None) -> str:
         """
         Generates a text block of known facts for the system prompt.
-        If query is provided, uses semantic search. Otherwise uses recent facts.
+        If query is provided, uses RAG retrieval first, then semantic search.
+        Otherwise uses recent facts.
         """
-        if not self.facts:
-            return ""
+        blocks = []
 
-        selected_keys = []
-        if query:
-            semantic_results = self.semantic_search(query, limit=limit)
-            selected_keys = [res[0] for res in semantic_results]
+        # --- RAG Context (if query provided) ---
+        if query and self.rag and self.rag.is_available:
+            rag_block = self.rag.get_context_block(query, n_results=limit)
+            if rag_block:
+                blocks.append(rag_block)
+
+        # --- Fact-based Context ---
+        if self.facts:
+            selected_keys = []
+            if query:
+                semantic_results = self.semantic_search(query, limit=limit)
+                selected_keys = [res[0] for res in semantic_results]
+            
+            if not selected_keys:
+                # Fallback to recent
+                sorted_facts = sorted(
+                    self.facts.items(), 
+                    key=lambda x: x[1].get("timestamp", ""), 
+                    reverse=True
+                )[:limit]
+                selected_keys = [k for k, v in sorted_facts]
+            
+            fact_block = "\n### RELEVANT PROJECT MEMORIES:\n"
+            for key in selected_keys:
+                data = self.facts[key]
+                fact_block += f"- [{key}]: {data['value']} ({data['timestamp']})\n"
+            blocks.append(fact_block)
         
-        if not selected_keys:
-            # Fallback to recent
-            sorted_facts = sorted(
-                self.facts.items(), 
-                key=lambda x: x[1].get("timestamp", ""), 
-                reverse=True
-            )[:limit]
-            selected_keys = [k for k, v in sorted_facts]
-        
-        block = "\n### RELEVANT PROJECT MEMORIES:\n"
-        for key in selected_keys:
-            data = self.facts[key]
-            block += f"- [{key}]: {data['value']} ({data['timestamp']})\n"
-        
-        return block
+        return "\n".join(blocks)
 
 # Global instance for core systems
 memory_manager = MemoryManager()

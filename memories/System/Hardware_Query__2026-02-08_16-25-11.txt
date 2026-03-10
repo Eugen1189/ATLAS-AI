@@ -1,1 +1,0 @@
-User asks for CPU temperature and free memory, but receives a PowerShell error.

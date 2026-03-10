@@ -1,1 +1,0 @@
-User confirms something, but the AI returns a Powershell error related to using the 'Name' parameter multiple times in the Stop-Process command. The error suggests using array syntax for multiple values.

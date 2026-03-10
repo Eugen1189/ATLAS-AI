@@ -1,4 +1,20 @@
-# Python
+# ==========================================
+# AXIS Project .gitignore
+# ==========================================
+
+# --- SECRETS (CRITICAL — NEVER COMMIT) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+config.py
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,46 +23,46 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.egg
 
-# Virtual Environment
+# --- Virtual Environment ---
 venv/
 env/
 ENV/
+.venv/
 
-# IDE
+# --- IDE ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.gemini/
 
-# OS
+# --- OS ---
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Project specific
+# --- Testing & Coverage ---
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# --- Project Specific ---
 vision_buffer.png
 response_audio.mp3
 *.log
+/logs/
 
-# Environment variables (секрети)
-.env
-
-# Config (містить секрети - НЕ комітити!)
-config.py
-
-# Model files (великі файли)
-# model/  # Розкоментуйте, якщо модель занадто велика для GitHub
-
-# Music files (великі файли)
-# music/*.mp3  # Розкоментуйте, якщо музика занадто велика
-
-
+# --- Model files (large binaries) ---
 /model/
-/venv/
-# Local data & memories
-/audio_output/
+
+# --- Local data & memories (runtime state) ---
 /memories/
+/audio_output/
 last_action.json
 vision_*.png
-.env

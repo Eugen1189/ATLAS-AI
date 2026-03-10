@@ -1,1 +1,0 @@
-User requested to launch calculator, but AI couldn't find the program 'calc' and suggested adding it to launcher.py.

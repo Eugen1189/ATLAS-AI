@@ -1,1 +1,0 @@
-User requested a list of files in the Documents folder, but the AI encountered a PowerShell error indicating that the specified path does not exist.

@@ -15,7 +15,7 @@
                 "@modelcontextprotocol/server-github"
             ],
             "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "твій_токен_з_env"
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
             }
         }
     }

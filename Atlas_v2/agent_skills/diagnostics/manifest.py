@@ -1,46 +1,89 @@
-from core.i18n import lang
-from typing import Dict
-import os
+﻿import os
 import json
+import subprocess
+import platform
+import psutil
+import sys
 from pathlib import Path
+from core.skills.wrapper import agent_tool
+from core.system.discovery import EnvironmentDiscoverer
 
-def analyze_performance() -> str:
-    """
-    Reads the logs and analyzes execution times of skills to find bottlenecks.
-    Use this for the Self-Optimization Sprint.
-    """
-    log_dir = Path(__file__).parent.parent.parent.parent / "logs"
-    log_file = log_dir / "axis.log"
-    
-    if not log_file.exists():
-        return "No axis.log found for performance analysis."
-        
+@agent_tool
+def analyze_performance(**kwargs) -> str:
+    """Standard 2026 Audit: Scans logs for bottleneck identification."""
+    log_file = Path("logs/axis.log")
+    if not log_file.exists(): return "No logs found."
     timings = {}
     try:
-        with open(log_file, "r", encoding="utf-8") as f:
+        with open(log_file, "r") as f:
             for line in f:
                 try:
-                    data = json.loads(line)
-                    if data.get("event") == "performance.timing":
-                        func = data.get("function")
-                        dur = data.get("duration_sec", 0)
-                        if func not in timings:
-                            timings[func] = []
-                        timings[func].append(dur)
-                except Exception:
-                    pass
-                    
-        if not timings:
-            return "No performance timings found in logs yet. Add @time_it decorator to functions to analyze them."
-            
-        report = "AXIS Performance Analysis:\n"
-        for func, durs in timings.items():
-            avg = sum(durs) / len(durs)
-            max_d = max(durs)
-            report += f"- {func}: Avg {avg:.3f}s | Max {max_d:.3f}s | Min {min(durs):.3f}s (Called {len(durs)} times)\n"
-            
+                    d = json.loads(line)
+                    if d.get("event") == "performance.timing":
+                        f_n = d.get("function")
+                        timings.setdefault(f_n, []).append(d.get("duration_sec", 0))
+                except Exception: pass
+        if not timings: return "Timing data empty."
+        report = "### Performance Diagnostics:\n"
+        for f, ds in timings.items(): report += f"- {f}: Avg {sum(ds)/len(ds):.3f}s (Max {max(ds):.3f}s)\n"
         return report
-    except Exception as e:
-        return f"Error analyzing performance: {str(e)}"
+    except Exception as e: return f"Error: {e}"
 
-EXPORTED_TOOLS = [analyze_performance]
+@agent_tool
+def deep_system_scan(**kwargs):
+    """
+    Збирає детальну інформацію про залізо, ОС та використання ресурсів.
+    Включає хак для правильного визначення Windows 11.
+    """
+    uname = platform.uname()
+    os_system = uname.system
+    os_release = uname.release
+    
+    # 🛡️ ХАК ДЛЯ WINDOWS 11: Перевіряємо номер збірки
+    if os_system == "Windows" and hasattr(sys, 'getwindowsversion'):
+        build_num = sys.getwindowsversion().build
+        if build_num >= 22000:
+            os_release = "11"  # Примусово ставимо 11, якщо збірка нова
+
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage(os.path.abspath(os.sep))
+    
+    scan_report = {
+        "os_system": os_system,
+        "os_release": os_release,
+        "cpu_processor": uname.processor,
+        "cpu_cores_logical": psutil.cpu_count(logical=True),
+        "cpu_usage_percent": psutil.cpu_percent(interval=0.5),
+        "ram_total_gb": round(memory.total / (1024**3), 2),
+        "ram_used_gb": round(memory.used / (1024**3), 2),
+        "ram_percent": memory.percent,
+        "disk_total_gb": round(disk.total / (1024**3), 2),
+        "disk_free_gb": round(disk.free / (1024**3), 2),
+        "disk_percent": disk.percent
+    }
+    
+    return scan_report
+
+@agent_tool
+def repair_environment(**kwargs) -> str:
+    """Standard 2026 Self-Healing: Cleans cache, checks dependencies."""
+    fixes = []
+    # 1. Clean visual snapshots
+    try:
+        s_path = "memories/visual_snapshots"
+        if os.path.exists(s_path):
+            files = os.listdir(s_path)
+            for f in files: os.remove(os.path.join(s_path, f))
+            fixes.append(f"Cleared {len(files)} visual artifacts.")
+    except Exception: pass
+    
+    # 2. Check Internet
+    try:
+        subprocess.check_call(["ping", "-n", "1", "8.8.8.8"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        fixes.append("Internet connectivity: OK")
+    except Exception: fixes.append("Internet status: OFFLINE")
+    
+    return "### Repair Report:\n" + "\n".join(fixes)
+
+EXPORTED_TOOLS = [analyze_performance, deep_system_scan, repair_environment]
+

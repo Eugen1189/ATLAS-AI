@@ -1,0 +1,53 @@
+#!/bin/sh
+# ============================================
+# AXIS Git Pre-Commit Hook — Secret Leak Guard
+# ============================================
+# Blocks commits that contain API keys or secrets.
+# Install: copy this file to .git/hooks/pre-commit
+#          and make it executable (chmod +x on Linux/Mac)
+# ============================================
+
+echo "🛡️ [AXIS Guard] Scanning staged files for secrets..."
+
+# Patterns that indicate leaked secrets
+PATTERNS=(
+    "AIzaSy"                    # Google API Key prefix
+    "sk-proj-"                  # OpenAI API Key prefix
+    "sk-ant-"                   # Anthropic API Key prefix
+    "pplx-"                     # Perplexity API Key prefix
+    "ghp_"                      # GitHub Personal Access Token
+    "gho_"                      # GitHub OAuth Token
+    "AKIA"                      # AWS Access Key ID
+    "-----BEGIN.*PRIVATE KEY"   # Private keys (PEM)
+    "password\s*=\s*['\"]"      # Hardcoded passwords
+)
+
+FOUND=0
+
+for pattern in "${PATTERNS[@]}"; do
+    # Search staged files (not .env.example)
+    MATCHES=$(git diff --cached --diff-filter=d -U0 -- . ':!.env.example' ':!*.md' | grep -iE "$pattern" || true)
+    if [ -n "$MATCHES" ]; then
+        echo "🚨 BLOCKED: Found potential secret matching pattern '$pattern':"
+        echo "$MATCHES" | head -5
+        echo ""
+        FOUND=1
+    fi
+done
+
+# Also check if .env itself is being staged
+if git diff --cached --name-only | grep -qE '^\.env$'; then
+    echo "🚨 BLOCKED: .env file is being committed! Remove it with:"
+    echo "   git reset HEAD .env"
+    FOUND=1
+fi
+
+if [ $FOUND -eq 1 ]; then
+    echo ""
+    echo "❌ Commit REJECTED by AXIS Secret Guard."
+    echo "   If this is a false positive, use: git commit --no-verify"
+    exit 1
+fi
+
+echo "✅ [AXIS Guard] No secrets detected. Commit approved."
+exit 0

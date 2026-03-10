@@ -1,1 +1,0 @@
-User requested current Bitcoin price and weather in Kyiv. AI attempted web search but failed due to an invalid Perplexity API model error.

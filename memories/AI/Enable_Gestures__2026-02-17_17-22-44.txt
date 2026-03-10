@@ -1,1 +1,0 @@
-User requests to enable gestures, triggering an internal vision process.

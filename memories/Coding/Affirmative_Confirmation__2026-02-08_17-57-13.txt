@@ -1,1 +1,0 @@
-User confirms successful execution without output.

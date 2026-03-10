@@ -1,1 +1,0 @@
-User asked to start 'work_mode'. The script failed at multiple steps: unable to find specified files (VS Code, Spotify) and volume muting issue.

@@ -85,7 +85,8 @@
     },
     "audio": {
         "listening_start": "🎤 [Audio Input]: Active, speaking...",
-        "listening_done": "🎤 [Audio Input]: Processing...",
+        "listening_done": "🎤 [Audio Input]: Recognizing...",
+        "calibrating": "🎤 [Audio Input]: Calibrating (Silence)...",
         "recognition_error": "❌ [Audio Input]: Could not recognize speech.",
         "request_error": "❌ [Audio Input]: Sphinx error: {error}",
         "recording_error": "❌ [Audio Input]: Error during recording: {error}",

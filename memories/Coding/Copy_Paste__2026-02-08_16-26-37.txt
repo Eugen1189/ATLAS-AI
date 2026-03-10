@@ -1,1 +1,0 @@
-User requests Atlas to perform a copy operation (Ctrl+C), and Atlas confirms the click action at the current mouse position.

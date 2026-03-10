@@ -1,1 +1,0 @@
-User requested to start the camera. AI triggered internal function 'INTERNAL:vision:start'.

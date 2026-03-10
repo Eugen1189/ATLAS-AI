@@ -1,1 +1,0 @@
-User requests Atlas to open ChatGPT. Atlas acknowledges and begins opening it.

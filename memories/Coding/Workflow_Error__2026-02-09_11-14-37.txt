@@ -1,1 +1,0 @@
-User request to run 'atlas workflow' resulted in an error: the path is unknown and needs to be added to launcher.py.

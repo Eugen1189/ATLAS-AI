@@ -1,1 +1,0 @@
-User requests AI to analyze the Python file 'main_with_atlas.py'. AI asks for access to the file (upload, URL, or copy-paste).

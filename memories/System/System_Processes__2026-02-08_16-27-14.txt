@@ -1,1 +1,0 @@
-User requests system status and top processes; AI returns CPU usage of top processes.

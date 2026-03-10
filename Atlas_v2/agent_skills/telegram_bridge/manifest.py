@@ -1,176 +1,93 @@
-import os
+﻿import os
+import json
 import requests
 import threading
-from dotenv import load_dotenv
-from core.i18n import lang
-
-# Import dictionary to store confirmation states
 from .listener import PENDING_CONFIRMATIONS
+from core.skills.wrapper import agent_tool
 
-# Dynamically find the path to .env (C:\Projects\Atlas\.env)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.abspath(os.path.join(current_dir, "..", "..", "..", ".env"))
-load_dotenv(dotenv_path=env_path)
+def _resolve_path(path: str) -> str:
+    """Helper to expand home and replace placeholders."""
+    if not path: return path
+    path = path.replace("[Your_Username]", os.getlogin())
+    return os.path.abspath(os.path.expanduser(path))
 
-def send_telegram_message(text: str) -> str:
-    """
-    Sends a text message to the user directly to their smartphone on Telegram.
-    Use this tool when:
-    1. The user explicitly asks to "send this to telegram", "send to phone".
-    2. You need to send a long report, code, or link that is convenient to read on a phone.
-    3. You have finished a long background task and want to notify the user.
-    
-    Args:
-        text: Message text to send.
-    """
-    print(lang.get("telegram.sending_msg"))
-    
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
-    if not bot_token or not chat_id:
-        return lang.get("telegram.env_error")
-        
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML" # Allows AXIS to use basic formatting (bold, italic)
-    }
+@agent_tool
+def send_telegram_message(text: str, **kwargs) -> str:
+    """Відправляє текстове повідомлення на телефон Командора (через Telegram). Використовуй для віддалених звітів."""
+    t, c = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if not t or not c: 
+        return "❌ Помилка: Не налаштовані TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID у .env файлі."
     
     try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            return lang.get("telegram.msg_delivered")
-        else:
-            return lang.get("telegram.api_error", error=response.text)
-    except Exception as e:
-        return lang.get("telegram.conn_error", error=e)
+        r = requests.post(
+            f"https://api.telegram.org/bot{t}/sendMessage", 
+            json={"chat_id": c, "text": text, "parse_mode": "HTML"}, 
+            timeout=10
+        )
+        if r.status_code == 200:
+            return f"✅ Повідомлення успішно відправлено в Telegram: '{text[:50]}...'"
+        return f"❌ Помилка Telegram API: {r.text}"
+    except Exception as e: 
+        return f"❌ Критична помилка з'єднання з Telegram: {e}"
 
-def send_telegram_file(file_path: str, caption: str = "") -> str:
-    """
-    Sends a file (photo, document) to Telegram.
-    Use this tool when the user asks you to send a screenshot or report.
-    """
-    print(lang.get("telegram.sending_file", path=file_path))
-    
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
-    if not bot_token or not chat_id:
-        return lang.get("telegram.env_error")
+@agent_tool
+def send_telegram_photo(filepath: str, caption: str = "", **kwargs) -> str:
+    """Відправляє фото, скріншот або файл з комп'ютера на телефон Командора."""
+    t, c = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if not t or not c: 
+        return "❌ Помилка: Telegram налаштування відсутні."
         
-    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
-    if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
-        url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
-        
+    path = _resolve_path(filepath)
+    if not os.path.exists(path):
+        return f"❌ Помилка: Файл за шляхом {path} не знайдено."
+
+    url = f"https://api.telegram.org/bot{t}/sendDocument"
+    files = {'document': open(path, 'rb')}
+    
+    # Визначаємо, чи це фото
+    if path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        url = f"https://api.telegram.org/bot{t}/sendPhoto"
+        files = {'photo': open(path, 'rb')}
+    
     try:
-        with open(file_path, 'rb') as f:
-            if 'sendPhoto' in url:
-                files = {'photo': f}
-            else:
-                files = {'document': f}
-            
-            data = {'chat_id': chat_id}
-            if caption:
-                data['caption'] = caption
-                
-            response = requests.post(url, data=data, files=files, timeout=30)
-            
-            if response.status_code == 200:
-                print(f"[Telegram Bridge]: {lang.get('telegram.file_sent', path=file_path)}")
-                return lang.get("telegram.file_sent", path=file_path)
-            else:
-                print(lang.get("telegram.server_error", code=response.status_code, text=response.text))
-                return lang.get("telegram.api_error", error=response.text)
-    except Exception as e:
-        print(f"[Telegram Bridge]: Critical Error: {e}")
-        return lang.get("telegram.file_send_error", error=e)
+        r = requests.post(
+            url, 
+            data={'chat_id': c, 'caption': caption}, 
+            files=files, 
+            timeout=30
+        )
+        if r.status_code == 200:
+            return f"✅ Файл {os.path.basename(path)} успішно відправлено в Telegram."
+        return f"❌ Помилка Telegram API: {r.text}"
+    finally:
+        # Закриваємо файл
+        for f in files.values(): f.close()
 
-def ask_user_confirmation(prompt: str) -> bool:
-    """
-    Asks the user to confirm a specific action via Telegram (Human-in-the-loop).
-    Use this tool BEFORE:
-    - Deleting or significantly overwriting important files.
-    - Executing git push or similar actions that affect external systems (deploy, etc.).
-    - Running commands that could potentially harm the system (rm -rf, formatting, etc.).
-    
-    The tool will pause your execution and wait until the user clicks
-    the "Confirm" or "Decline" button in Telegram.
-    
-    Args:
-        prompt: A clear explanation of what exactly you are about to do. Example: "I am ready to git push. Confirm?"
-    
-    Returns:
-        True if the user confirmed the action (you can proceed).
-        False if the user declined the action (must be cancelled). Always inform the user if you cancel something.
-    """
-    print(lang.get("telegram.req_confirm", prompt=prompt))
-    
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
-    if not bot_token or not chat_id:
-        print("[Telegram Bridge]: " + lang.get("telegram.env_error"))
+@agent_tool
+def ask_user_confirmation(prompt: str, **kwargs) -> bool:
+    """Standard 2026 HITL: Pauses execution until user confirms action via Telegram phone app."""
+    t, c = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    kb = {"inline_keyboard": [[{"text": "✅ Yes", "callback_data": "confirm_yes"}, {"text": "❌ No", "callback_data": "confirm_no"}]]}
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{t}/sendMessage", 
+            json={"chat_id": c, "text": f"⚠️ CONFIRMATION REQ:\n{prompt}", "reply_markup": kb}, 
+            timeout=10
+        ).json()
+        m_id = r.get("result", {}).get("message_id")
+        if not m_id: return False
+        
+        evt = threading.Event()
+        PENDING_CONFIRMATIONS[m_id] = {"event": evt, "result": None}
+        
+        # Чекаємо 5 хвилин
+        if evt.wait(timeout=300):
+            res = PENDING_CONFIRMATIONS[m_id]["result"]
+            del PENDING_CONFIRMATIONS[m_id]
+            return bool(res)
         return False
-        
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": f"{lang.get('telegram.confirm_title')}\n\n{prompt}",
-        "parse_mode": "HTML",
-        "reply_markup": {
-            "inline_keyboard": [
-                [
-                    {"text": lang.get("telegram.confirm_yes"), "callback_data": "confirm_yes"},
-                    {"text": lang.get("telegram.confirm_no"), "callback_data": "confirm_no"}
-                ]
-            ]
-        }
-    }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            msg_id = response.json().get("result", {}).get("message_id")
-            if msg_id:
-                # Create an event to wait on
-                evt = threading.Event()
-                PENDING_CONFIRMATIONS[msg_id] = {"event": evt, "result": None}
-                
-                print(lang.get("telegram.waiting_resp", id=msg_id))
-                # Block tool execution, wait for 5 minutes (300 seconds)
-                confirmed = evt.wait(timeout=300.0) 
-                
-                if confirmed:
-                    result = PENDING_CONFIRMATIONS[msg_id]["result"]
-                    print(lang.get("telegram.user_replied_yes") if result else lang.get("telegram.user_replied_no"))
-                    del PENDING_CONFIRMATIONS[msg_id]
-                    return bool(result)
-                else:
-                    print(lang.get("telegram.timeout"))
-                    # Update message to remove buttons since time expired
-                    title = lang.get("telegram.confirm_title")
-                    timeout_msg = lang.get("telegram.timeout_msg")
-                    requests.post(f"https://api.telegram.org/bot{bot_token}/editMessageText", json={
-                        "chat_id": chat_id,
-                        "message_id": msg_id,
-                        "text": f"{title}\n\n{prompt}{timeout_msg}",
-                        "reply_markup": {"inline_keyboard": []},
-                        "parse_mode": "HTML"
-                    })
-                    if msg_id in PENDING_CONFIRMATIONS:
-                        del PENDING_CONFIRMATIONS[msg_id]
-                    return False
-            else:
-                print(lang.get("telegram.no_msg_id"))
-                return False
-        else:
-            print(lang.get("telegram.api_error", error=response.text))
-            return False
-    except Exception as e:
-        print(lang.get("telegram.conn_error", error=e))
+    except Exception: 
         return False
 
-# Export tools for Orchestrator
-EXPORTED_TOOLS = [send_telegram_message, send_telegram_file, ask_user_confirmation]
+EXPORTED_TOOLS = [send_telegram_message, send_telegram_photo, ask_user_confirmation]
+

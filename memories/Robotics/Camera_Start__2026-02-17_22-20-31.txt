@@ -1,1 +1,0 @@
-User command to start camera. Internal AI command: INTERNAL:vision:start

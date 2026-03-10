@@ -1,1 +1,0 @@
-User command to start the camera, translated internally.

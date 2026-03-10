@@ -1,1 +1,0 @@
-User requests to kill Chrome process; AI prompts for confirmation before execution.

@@ -1,1 +1,0 @@
-User requested to control camera, AI denied due to lack of capabilities.

@@ -1,1 +1,0 @@
-Atlas scans the system and provides a detailed report including OS, Python version, user, processor, CPU load and temperature, RAM usage, disk space, battery status, installed libraries and present files. The scan is successful and the system is ready to work.

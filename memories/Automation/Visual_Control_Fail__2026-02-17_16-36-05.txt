@@ -1,1 +1,0 @@
-User asks Atlas to activate visual control, but the AI doesn't know how.

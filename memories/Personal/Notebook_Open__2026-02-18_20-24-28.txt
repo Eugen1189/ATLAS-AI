@@ -1,1 +1,0 @@
-User requests to open notebook; AI acknowledges and starts the application.

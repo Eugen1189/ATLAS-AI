@@ -1,1 +1,0 @@
-User requests to start the camera. AI initiates the 'vision:start' process.

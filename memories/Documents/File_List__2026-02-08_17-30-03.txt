@@ -1,1 +1,0 @@
-User requests a list of files in the Documents folder; AI does not understand the request.

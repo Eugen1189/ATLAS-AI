@@ -1,1 +1,0 @@
-User requests camera activation. AI triggers internal vision module to start.

@@ -103,6 +103,27 @@ def _poll_telegram(axis_core):
                         if text:
                             print(lang.get("telegram.incoming_text", text=text))
                             
+                            # --- Internal Command: /status ---
+                            if text.strip().lower() == "/status":
+                                from core.system.discovery import EnvironmentDiscoverer
+                                f = EnvironmentDiscoverer.findings
+                                hw = f.get("hardware", {})
+                                ides = list(f.get("ides", {}).keys()) or ["None found"]
+                                tools = [t for t in f.get("tools", {})]
+                                
+                                report = (
+                                    f"<b>🖥 AXIS CORE STATUS</b>\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"<b>🏠 IDEs:</b> {', '.join(ides)}\n"
+                                    f"<b>⚙️ Hardware:</b> {hw.get('ram_gb')}GB RAM | {hw.get('gpu')}\n"
+                                    f"<b>🛠 Tools:</b> {', '.join(tools[:5])}...\n"
+                                    f"<b>📁 Workspace:</b> {f.get('workspaces')[0] if f.get('workspaces') else 'Not mapped'}\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"<i>Ready for Remote Command.</i>"
+                                )
+                                requests.post(send_url, json={"chat_id": chat_id, "text": report, "parse_mode": "HTML"})
+                                continue
+
                             try:
                                 # Tag source with sender's Telegram ID for per-user rate limiting
                                 tg_source = f"telegram:{sender_id or chat_id}"

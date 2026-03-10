@@ -1,10 +1,18 @@
+import time
 import sys
-import logging
 from datetime import datetime
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QFrame
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QFrame, QHBoxLayout
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QTimer, QThread
+from PyQt6.QtGui import QFont, QColor, QPainter, QPen
+import socket
+import json
+
+# Додаємо шлях до Atlas_v2 для роботи як окремий процес
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from core.logger import logger
+import logging
 
 class LogBridge(QObject):
     """
@@ -12,6 +20,31 @@ class LogBridge(QObject):
     """
     new_log = pyqtSignal(str)
     vision_update = pyqtSignal(dict) # To pass coordinates and gesture state
+    telemetry_update = pyqtSignal(dict) # To pass discovery results
+
+class TelemetryListener(QThread):
+    """Listens for UDP packets on port 5005 and sends them to the HUD bridge."""
+    data_received = pyqtSignal(dict)
+
+    def run(self):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind(("127.0.0.1", 5005))
+            while True:
+                try:
+                    data, addr = sock.recvfrom(4096)
+                    telemetry = json.loads(data.decode('utf-8'))
+                    self.data_received.emit(telemetry)
+                except Exception as e:
+                    print(f"HUD Telemetry Receive Error: {e}")
+                    time.sleep(1)
+        except OSError as e:
+            if e.errno == 10048:
+                print("⚠️ HUD Telemetry: Port 5005 busy (another HUD instance likely running).")
+            else:
+                print(f"HUD Telemetry Socket Error: {e}")
+        except Exception as e:
+            print(f"HUD Telemetry Thread Fatal Error: {e}")
 
 class HUDLogHandler(logging.Handler):
     """
@@ -37,7 +70,7 @@ class AxisHUD(QMainWindow):
     - Cyber-Vision Overlay (Aura Mapping)
     """
 
-    def __init__(self):
+    def __init__(self, bridge=None):
         """
         Initializes the HUD window with specific flags and log streaming bridge.
         """
@@ -48,9 +81,10 @@ class AxisHUD(QMainWindow):
         self.max_logs = 5
         self.log_labels = []
         self.hand_pos = None # Stores normalized coords (dict)
-        self.bridge = LogBridge()
+        self.bridge = bridge if bridge else LogBridge()
         self.bridge.new_log.connect(self.update_log)
         self.bridge.vision_update.connect(self.update_vision)
+        self.bridge.telemetry_update.connect(self.update_telemetry_from_dict)
         
         # 2. Window Flags
         self.setWindowFlags(
@@ -58,6 +92,13 @@ class AxisHUD(QMainWindow):
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Tool 
         )
+        
+        # New: Discovery Telemetry State
+        self.discovery_data = {
+            "ide": "Searching...",
+            "gpu": "Detecting...",
+            "ram": "---"
+        }
         
         # 3. Transparency
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -71,10 +112,19 @@ class AxisHUD(QMainWindow):
         # Top Container (Telemetry)
         self.top_layout = QVBoxLayout()
         self.top_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        
+        # Main Title
         self.status_label = QLabel("AXIS v2.5 | LOCAL BRAIN")
-        self.status_label.setFont(QFont("Consolas", 12, QFont.Weight.Bold))
-        self.status_label.setStyleSheet("color: #00BFFF; background: rgba(0,0,0,150); padding: 10px; border-radius: 5px;")
+        self.status_label.setFont(QFont("Consolas", 14, QFont.Weight.Bold))
+        self.status_label.setStyleSheet("color: #00BFFF; background: rgba(0,0,0,180); padding: 5px 15px; border-top-left-radius: 10px; border: 1px solid #00BFFF;")
+        
+        # Discovery Bar
+        self.discovery_bar = QLabel("IDE: --- | GPU: --- | RAM: ---")
+        self.discovery_bar.setFont(QFont("Consolas", 10))
+        self.discovery_bar.setStyleSheet("color: #AAAAAA; background: rgba(0,0,0,150); padding: 5px 15px; border-bottom-left-radius: 10px; border-left: 1px solid #00BFFF; border-bottom: 1px solid #00BFFF;")
+        
         self.top_layout.addWidget(self.status_label)
+        self.top_layout.addWidget(self.discovery_bar)
         
         # Bottom Container (Log Streamer)
         self.log_layout = QVBoxLayout()
@@ -89,6 +139,11 @@ class AxisHUD(QMainWindow):
         hud_handler = HUDLogHandler(self.bridge)
         hud_handler.setFormatter(logging.Formatter('%(message)s'))
         logging.getLogger().addHandler(hud_handler)
+        
+        # 6. Start Telemetry Listener (IPC)
+        self.telemetry_thread = TelemetryListener()
+        self.telemetry_thread.data_received.connect(self.update_telemetry_from_dict)
+        self.telemetry_thread.start()
         
         self.showFullScreen()
         logger.info("ui.hud_started", mode="cyber_vision_ready")
@@ -134,21 +189,40 @@ class AxisHUD(QMainWindow):
         self.hand_pos = data
         self.update() # Triggers paintEvent
 
-    def update_telemetry(self, text: str):
-        """Updates the status title."""
-        self.status_label.setText(text)
+    def update_telemetry_from_dict(self, data: dict):
+        """Receives discovery dictionary and updates HUD labels."""
+        ides = data.get("ides", {})
+        ide = list(ides.keys())[0] if ides else "None"
+        hw = data.get("hardware", {})
+        self.update_telemetry(ide=ide, gpu=hw.get("gpu"), ram=hw.get("ram_gb"))
+
+    def update_telemetry(self, ide=None, gpu=None, ram=None):
+        """Updates the discovery telemetry bar."""
+        if ide: self.discovery_data["ide"] = ide
+        if gpu: self.discovery_data["gpu"] = gpu.split(" ")[-1] if " " in gpu else gpu # Shorten name
+        if ram: self.discovery_data["ram"] = f"{ram}GB"
+        
+        text = f"IDE: {self.discovery_data['ide']} | GPU: {self.discovery_data['gpu']} | RAM: {self.discovery_data['ram']}"
+        self.discovery_bar.setText(text)
 
     def update_log(self, message: str):
         """
-        Adds a new log entry to the bottom streamer. 
-        Evicts old entries if max_logs is reached.
+        Adds a new log entry. If message contains RAG info, uses special styling.
         """
         timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # Detect RAG citations for "Iron Man" effect
+        is_rag = "rag." in message or "recalled" in message or ".py:" in message
+        
         log_entry = f"[{timestamp}] > {message}"
         
         label = QLabel(log_entry)
         label.setFont(QFont("Consolas", 10))
-        label.setStyleSheet("color: #00FF00; background: rgba(0,0,0,100); padding: 2px;")
+        
+        if is_rag:
+            label.setStyleSheet("color: #00FFFF; background: rgba(0,255,255,40); padding: 4px; border-left: 3px solid #00FFFF;")
+        else:
+            label.setStyleSheet("color: #00FF00; background: rgba(0,0,0,100); padding: 2px;")
         
         self.log_layout.addWidget(label)
         self.log_labels.append(label)

@@ -1,1 +1,0 @@
-User asked to stop music, AI confirms execution of process termination script (Spotify, Groove Music, foobar2000, etc.) requiring confirmation.

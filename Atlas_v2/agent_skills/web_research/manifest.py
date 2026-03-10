@@ -1,53 +1,92 @@
-import os
+﻿import os
+import json
 import requests
-from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from .google_logic import google_research
 from core.i18n import lang
+from core.logger import logger
+from core.skills.wrapper import agent_tool
 
-# Dynamically find path to .env
-current_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
-load_dotenv(dotenv_path=env_path)
-
-def perplexity_search(query: str) -> str:
-    """
-    Performs a deep web search via Perplexity AI. 
-    This tool bypasses website blocks and returns a synthesized response with up-to-date facts.
-    Use it to search for documentation, news, or technical solutions.
-    
-    Args:
-        query: User's search query.
-    """
-    print(lang.get("web.searching_deep", query=query))
-    
+@agent_tool
+def perplexity_search(query: str, **kwargs) -> str:
+    """Standard 2026 AI-Synthesized Search. Use for complex, up-to-date queries."""
     api_key = os.getenv("PERPLEXITY_API_KEY")
-    if not api_key:
-        return lang.get("web.env_error")
-
-    url = "https://api.perplexity.ai/chat/completions"
+    if not api_key: 
+        return json.dumps({"status": "error", "message": "PERPLEXITY_API_KEY not set."}, ensure_ascii=False)
     
+    url = "https://api.perplexity.ai/chat/completions"
     payload = {
-        "model": "sonar", # Freshest model for search
+        "model": "sonar", 
         "messages": [
-            {"role": "system", "content": "Be precise, concise and provide actual web information."},
+            {"role": "system", "content": "Concise answer, Ukrainian language."}, 
             {"role": "user", "content": query}
         ]
     }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
+    r = requests.post(url, json=payload, headers=headers, timeout=25)
+    r.raise_for_status()
+    
+    content = r.json()['choices'][0]['message']['content']
+    # Cleaning for JSON safety
+    safe_content = content.replace('"', "'").replace("\n", " ")
+    return json.dumps({
+        "status": "success", 
+        "content": safe_content,
+        "SYSTEM_INSTRUCTION": "Дані успішно отримано. Перевір початковий наказ користувача: якщо там були ще кроки (наприклад, зберегти файл), негайно виклич наступний інструмент. Якщо ні — напиши фінальну відповідь."
+    }, ensure_ascii=False)
 
+@agent_tool
+def fetch_website_content(url: str, **kwargs) -> str:
+    """Standard 2026 Website Scraper. Fetches cleaned text for RAG (Protected)."""
+    r = requests.get(url, headers={'User-Agent': 'AXIS/2.8'}, timeout=12)
+    r.raise_for_status()
+    
+    soup = BeautifulSoup(r.text, 'html.parser')
+    for s in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
+        s.decompose()
+        
+    text = ' '.join(soup.get_text(separator=' ').split())
+    safe_text = text[:5000].replace('"', "'").replace("\r", "").replace("\n", " ")
+    
+    return json.dumps({
+        "status": "success",
+        "url": url,
+        "content": safe_text,
+        "SYSTEM_INSTRUCTION": "Дані з сайту успішно отримано. Якщо тобі потрібно виконати наступну дію (наприклад, зберегти результат у файл) — зроби це зараз. Якщо інформації достатньо для відповіді — дай її."
+    }, ensure_ascii=False)
+
+@agent_tool
+def deep_topic_report(topic: str, **kwargs) -> str:
+    """High-Level 2026 Analyst: Performs multiple searches and scrapes to build a complete report."""
+    print(f"🕵️ AXIS Deep Research: {topic}...")
+    
+    urls = google_research(topic, num_results=3)
+    # The wrapper around google_research will return JSON, so we handle it
+    if isinstance(urls, str) and "error" in urls.lower():
+        return perplexity_search(topic)
+    
+    # Extract URLs from the JSON response of google_research (it returns list in 'content')
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=20)
-        if response.status_code == 200:
-            data = response.json()
-            return f"{lang.get('web.results_prep')}\n{data['choices'][0]['message']['content']}"
-        else:
-            return lang.get("web.api_error", code=response.status_code, error=response.text)
-    except Exception as e:
-        return lang.get("web.crit_error", error=e)
+        urls_data = json.loads(urls)
+        urls_list = urls_data.get("content", [])
+        if not urls_list or not isinstance(urls_list, list):
+             return perplexity_search(topic)
+    except:
+        return perplexity_search(topic)
+        
+    gathered_context = []
+    for url in urls_list[:2]:
+        res_raw = fetch_website_content(url)
+        try:
+            res_json = json.loads(res_raw)
+            if res_json.get("status") == "success":
+                gathered_context.append(f"Source [{url}]: {res_json['content']}")
+        except: continue
+        
+    context_block = " ".join(gathered_context)[:10000]
+    synthesis_prompt = f"Based on this research context: {context_block}. Please provide a deep structured report on: {topic}. Language: Ukrainian."
+    return perplexity_search(synthesis_prompt)
 
-# Export tool
-EXPORTED_TOOLS = [perplexity_search, google_research]
+EXPORTED_TOOLS = [perplexity_search, google_research, fetch_website_content, deep_topic_report]
+

@@ -1,1 +1,0 @@
-User requests system scan. AI provides detailed report on OS, resources, libraries, and files.

@@ -1,1 +1,0 @@
-User requests battery level and power status; AI reports inability to provide information.

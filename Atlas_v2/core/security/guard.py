@@ -1,10 +1,17 @@
 import re
+import os
 from pathlib import Path
 from core.logger import logger
 
 class SecurityGuard:
-    """Centralized validation for commands, code, and paths to enforce system safety."""
+    """
+    Centralized validation for commands, code, and paths to enforce system safety.
+    Implements 'Scoped Trust': fluid access to workspace, restricted to system.
+    """
     
+    # Track the current active workspace to allow 'Fluid' access
+    workspace_root = os.getcwd().replace("\\", "/").lower()
+
     DANGEROUS_PATTERNS = [
         r"rm\s+-rf\s+/",            # Root deletion
         r"format\s+[A-Z]:",         # Disk formatting
@@ -15,15 +22,24 @@ class SecurityGuard:
         r":\(\){ :\|:& };:",        # Fork bomb
     ]
 
-    RESTRICTED_PATHS = [
-        "c:\\windows",
+    # These are ALWAYS critical and require authorization/blocking
+    CRITICAL_SYSTEM_PATHS = [
         "c:/windows",
+        "c:/program files",
         "/etc/",
         "/bin/",
         "/sbin/",
         "/usr/bin/",
-        "/usr/sbin/"
+        "/usr/sbin/",
+        "/root"
     ]
+
+    @classmethod
+    def set_workspace(cls, path: str):
+        """Updates the trusted workspace root."""
+        if path:
+            cls.workspace_root = str(Path(path).resolve()).replace("\\", "/").lower()
+            logger.info("security.workspace_trusted", path=cls.workspace_root)
 
     @staticmethod
     def is_safe_command(command: str) -> bool:
@@ -43,19 +59,28 @@ class SecurityGuard:
         if not path_str:
             return True
             
-        p_original_slashes = path_str.replace("\\", "/").lower()
         p = str(Path(path_str).resolve()).replace("\\", "/").lower()
         
-        for restricted in SecurityGuard.RESTRICTED_PATHS:
-            if restricted in p or restricted in p_original_slashes:
-                logger.warning("security.restricted_path", path=path_str)
+        # 1. System-Critical Block: ALWAYS block these regardless of workspace
+        for critical in SecurityGuard.CRITICAL_SYSTEM_PATHS:
+            if critical in p:
+                logger.warning("security.critical_path_blocked", path=path_str)
                 return False
         
-        # If check_core flag is enabled, we prevent direct rewrites of core system files
+        # 2. Workspace-Fluid Check: If it's inside the workspace, it's generally trusted
+        is_in_workspace = p.startswith(SecurityGuard.workspace_root)
+        
+        # 3. Core Protection (Optional Layer)
         if check_core:
-            # Basic check against overriding core files (except if appropriately sandboxed)
-            if "core/" in p and "/ui/" not in p:
-                logger.warning("security.core_override_blocked", path=path_str)
-                return False
+            # We prevent direct rewrites of core AXIS system files even inside workspace
+            # unless they are explicitly marked as user-modifiable (like blueprints/configs)
+            if "/core/" in p and "/ui/" not in p and "/config/" not in p:
+                # If we are in the workspace, we might be the developer themselves!
+                # Но для безпеки ми все одно попереджаємо, якщо це не UI або config
+                if is_in_workspace:
+                    logger.debug("security.core_access_in_workspace", path=path_str)
+                else:
+                    logger.warning("security.core_override_blocked", path=path_str)
+                    return False
 
         return True

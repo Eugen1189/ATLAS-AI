@@ -7,7 +7,7 @@ packages = ["Atlas_v2"]
 
 [project]
 name = "axis-ai"
-version = "2.5.0"
+version = "2.7.7"
 description = "Autonomous Spatial AI & MCP Framework"
 authors = [
     {name = "Eugen1189", email = "your.email@example.com"}
@@ -44,7 +44,8 @@ dependencies = [
     "structlog>=24.4.0",
     "rich>=13.7.1",
     "ollama>=0.6.1",
-    "PyQt6>=6.6.0"
+    "PyQt6>=6.6.0",
+    "chromadb>=0.5.0"
 ]
 requires-python = ">=3.11"
 

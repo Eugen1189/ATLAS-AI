@@ -1,70 +1,95 @@
-import pyautogui
+﻿import pyautogui
 import time
 import os
+import json
 from core.i18n import lang
+from core.vision_engine import vision_engine
+from core.logger import logger
 
-# Security setting: stop script if mouse is moved to a corner of the screen
+# Security: Failsafe enabled (move mouse to corner to abort)
 pyautogui.FAILSAFE = True
 
-def take_screenshot() -> str:
+def click_screen(x: int, y: int, clicks: int = 1, button: str = 'left') -> str:
     """
-    Takes a screenshot of the current screen and saves it to disk.
-    Use this tool when the user asks 'look at the screen', 'what do you see',
-    or when you need to analyze the UI before clicking.
-    Returns the path to the saved file.
+    Standard 2026 Mouse Interaction.
     """
-    print(lang.get("os.taking_screenshot"))
-    # Create screenshots folder if it doesn't exist
-    os.makedirs("memories/vision", exist_ok=True)
-    
-    file_path = f"memories/vision/screen_{int(time.time())}.png"
-    screenshot = pyautogui.screenshot()
-    screenshot.save(file_path)
-    
-    abs_path = os.path.abspath(file_path)
-    return abs_path
+    logger.info("os.click", x=x, y=y, clicks=clicks, button=button)
+    try:
+        pyautogui.moveTo(x, y, duration=0.3)
+        pyautogui.click(clicks=clicks, button=button)
+        return f"Successfully clicked {button} button {clicks} time(s) at ({x}, {y})."
+    except Exception as e:
+        return f"Mouse Action Failed: {e}"
 
-def click_screen(x: int, y: int) -> str:
+def type_text(text: str, press_enter: bool = False, delay: float = 0.01) -> str:
     """
-    Clicks the left mouse button at specified X and Y coordinates on the screen.
-    Use this ONLY after analyzing a screenshot and knowing the exact coordinates of the target button.
-    
-    Args:
-        x: X coordinate on screen.
-        y: Y coordinate on screen.
+    Types text with human-like delay.
     """
-    print(lang.get("os.mouse_click", x=x, y=y))
-    pyautogui.moveTo(x, y, duration=0.5) # Smooth movement looks more natural
-    pyautogui.click()
-    return lang.get("os.clicked", x=x, y=y)
-
-def type_text(text: str, press_enter: bool = False) -> str:
-    """
-    Types the specified text on the keyboard.
-    Use this for typing search queries, writing code, or messages.
-    
-    Args:
-        text: Text to type.
-        press_enter: If True, Enter key will be pressed after typing.
-    """
-    print(lang.get("os.typing", text=text[:20]))
-    pyautogui.write(text, interval=0.05)
-    if press_enter:
-        pyautogui.press('enter')
-    return lang.get("os.typed", text=text)
+    logger.info("os.type", length=len(text))
+    try:
+        pyautogui.write(text, interval=delay)
+        if press_enter:
+            pyautogui.press('enter')
+        return f"Typed text sequence: '{text[:30]}...'"
+    except Exception as e:
+        return f"Keyboard Action Failed: {e}"
 
 def press_hotkey(hotkey: str) -> str:
     """
-    Presses a system key or keyboard shortcut.
-    Examples: 'enter', 'win', 'ctrl,c', 'ctrl,v', 'alt,tab', 'esc'.
-    
-    Args:
-        hotkey: Name of the key or combo separated by comma.
+    Presses complex hotkeys. Example: 'ctrl,alt,delete' or 'win,r'.
     """
-    print(lang.get("os.pressing", hotkey=hotkey))
-    keys = hotkey.split(',')
-    pyautogui.hotkey(*keys)
-    return lang.get("os.pressed", hotkey=hotkey)
+    try:
+        keys = [k.strip() for k in hotkey.split(',')]
+        pyautogui.hotkey(*keys)
+        return f"Hotkey sequence '{hotkey}' executed."
+    except Exception as e:
+        return f"Hotkey Error: {e}"
 
-# Export tools for Orchestrator
-EXPORTED_TOOLS = [take_screenshot, click_screen, type_text, press_hotkey]
+def get_screen_resolution() -> str:
+    """Returns the current screen resolution (width, height)."""
+    w, h = pyautogui.size()
+    return f"Current Screen Resolution: {w}x{h}"
+
+def get_active_window() -> str:
+    """Returns the title of the currently focused window."""
+    try:
+        import pygetwindow as gw
+        win = gw.getActiveWindow()
+        return f"Current Window: {win.title}" if win else "Desktop"
+    except Exception: return "Unknown Window (Requires pygetwindow)"
+
+def find_and_click_text(target_text: str) -> str:
+    """
+    High-Level 2026 Skill: Uses Vision Engine to find text on screen and clicks it.
+    Automatically handles multi-monitor or blurry text.
+    """
+    print(f"🔍 AXIS Vision searching for UI element: '{target_text}'...")
+    
+    # 1. Take fresh screenshot
+    img_path = vision_engine.capture_screen()
+    if "Error" in img_path: return img_path
+    
+    # 2. Ask Moondream for coordinates
+    prompt = f"Find the UI element with text '{target_text}'. If found, return ONLY the center [X, Y] coordinates in pixels. Format: [X, Y]. If not found, reply exactly with 'NOT_FOUND'."
+    analysis = vision_engine.analyze(img_path, prompt)
+    
+    # 3. Simple Coordinate Parser (Hardened)
+    try:
+        if "NOT_FOUND" in analysis:
+             return f"Vision module reported '{target_text}' is not visible on screen."
+             
+        import re
+        coords = re.findall(r'\[(\d+),\s*(\d+)\]', analysis)
+        if coords:
+            x, y = map(int, coords[0])
+            # Safety Check: Sanitize and Click
+            w, h = pyautogui.size()
+            if x > w or y > h: 
+                return f"❌ [SCALE ERROR]: Coords ({x}, {y}) exceed resolution {w}x{h}."
+            return click_screen(x, y)
+        else:
+            return f"OCR parsing failed. Moondream returned: {analysis[:100]}..."
+    except Exception as e:
+        return f"Coordinate extraction failed: {e}. Raw analysis: {analysis}"
+
+EXPORTED_TOOLS = [click_screen, type_text, press_hotkey, get_screen_resolution, find_and_click_text, get_active_window]

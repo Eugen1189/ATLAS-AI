@@ -1,1 +1,0 @@
-User asks to check ping, AI confirms successful ping with 30ms latency.

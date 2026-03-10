@@ -59,6 +59,17 @@ class BlueprintManager:
         except Exception as e:
             logger.error("personality.setup_error", error=str(e))
 
+    def switch_blueprint(self, name: str) -> str:
+        """
+        Switches the active blueprint at runtime.
+        """
+        old_name = self.active_blueprint.get("name", "Unknown")
+        new_bp = self.load_blueprint(name)
+        if new_bp:
+            logger.info("personality.switched", from_bp=old_name, to_bp=name)
+            return f"Personality switched from {old_name} to {new_bp.get('name')}. (Color: {new_bp.get('hud_color')})"
+        return f"Failed to switch to blueprint: {name}"
+
     def get_system_prompt_addon(self) -> str:
         """
         Generates a system prompt snippet based on the active blueprint.

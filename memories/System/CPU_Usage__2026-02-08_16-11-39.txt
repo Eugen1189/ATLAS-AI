@@ -1,1 +1,0 @@
-User asks what processes are loading the system, and the AI responds with a list of processes and their CPU usage.
