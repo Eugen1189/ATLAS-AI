@@ -3,6 +3,7 @@ import time
 import pyttsx3
 from core.i18n import lang
 from .listener import listen_command
+from core.logger import logger
 from core.skills.wrapper import agent_tool
 
 def _play_audio(fpath: str):

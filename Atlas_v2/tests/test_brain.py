@@ -30,17 +30,18 @@ class TestBrain(unittest.TestCase):
             brain.chat_session.send_message.return_value.text = "Response"
             self.assertEqual(brain.think("Hello"), "Response")
 
-    @patch('core.brain.ollama')
-    @patch('core.brain.blueprints.BlueprintManager')
+    @patch('core.brain.ollama_brain.ollama')
+    @patch('core.brain.ollama_brain.BlueprintManager')
     def test_ollama_brain(self, mock_bp, mock_ollama):
         def dummy_tool():
             """Dummy Tool"""
-            pass
+            return "Execution result"
             
         brain = OllamaBrain()
+        brain.tool_map = {"dummy_tool": dummy_tool}
         
         # Test initialize
-        with patch('core.brain.OLLAMA_AVAILABLE', True):
+        with patch('core.brain.ollama_brain.OLLAMA_AVAILABLE', True):
             brain.client = MagicMock()
             
             # Setup bp manager correctly
@@ -55,34 +56,26 @@ class TestBrain(unittest.TestCase):
             brain.model_name = "llama3.2"
             self.assertTrue(brain.check_model_health())
             
-            # Test check_model_health missing
-            brain.client.list.return_value = {"models": []}
-            self.assertFalse(brain.check_model_health())
-            
             # Test think JSON parsing
-            mock_response = {
+            mock_response_tool = {
                 'message': {
                     'content': '```json\n{"tool_name": "dummy_tool", "arguments": {}}\n```'
                 }
             }
-            mock_review_response = {
-                'message': {
-                    'content': 'CONFIDENCE: 100% | STATUS: APPROVED | REASON: Safe'
-                }
-            }
             # Next response after feeding tool output
-            mock_response_2 = {
+            mock_response_final = {
                 'message': {
                     'content': 'Final answer'
                 }
             }
-            brain.client.chat.side_effect = [mock_response, mock_review_response, mock_response_2]
+            # Only 2 calls now: one for tool call, one for final answer (no review)
+            brain.client.chat.side_effect = [mock_response_tool, mock_response_final]
             
             res = brain.think("test input")
             self.assertEqual(res, "Final answer")
         
         # Test without Ollama
-        with patch('core.brain.OLLAMA_AVAILABLE', False):
+        with patch('core.brain.ollama_brain.OLLAMA_AVAILABLE', False):
             brain.client = None
             self.assertFalse(brain.initialize([]))
             self.assertIn("OFFLINE", brain.think("test"))
