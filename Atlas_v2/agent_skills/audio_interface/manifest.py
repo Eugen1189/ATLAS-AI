@@ -17,54 +17,59 @@ def _play_audio(fpath: str):
         pygame.mixer.quit()
     except Exception: os.system(f'start /min "" "{fpath}"')
 
+def _clean_text_for_speech(text: str) -> str:
+    """Removes Markdown and technical symbols for clear speech."""
+    import re
+    # Remove markdown formatting
+    text = re.sub(r'[*_#`~>\[\]\(\)]', '', text)
+    # Remove code blocks and backticks
+    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    # Remove multi-newlines
+    text = re.sub(r'\n+', ' ', text)
+    return text.strip()
+
 @agent_tool
 def speak(text: str, **kwargs) -> str:
     """
     Озвучує текст вголос (Offline TTS). 
-    Можна вказати voice_index (центне число) або speed (множник, за замовчуванням 1.0).
+    Можна вказати voice_index (ціле число) або speed (множник, за замовчуванням 1.0).
     """
     speed_factor = kwargs.get("speed", 1.0)
     voice_idx = kwargs.get("voice_index")
     
+    # Clean text before speaking
+    clean_text = _clean_text_for_speech(text)
+    if not clean_text:
+        return "Nothing to speak (text was empty after cleaning)."
+
     try:
         engine = pyttsx3.init()
         
-        # 1. Налаштування швидкості (170 - золота середина для природності)
+        # 1. Налаштування швидкості (170 - золота середина)
         base_rate = 170
         engine.setProperty('rate', int(base_rate * speed_factor))
         
-        # 2. Отримання списку голосів
+        # 2. Вибір голосу
         voices = engine.getProperty('voices')
-        
-        # Логуємо доступні голоси для користувача (видно в терміналі)
-        logger.info(f"Audio.TTS: Found {len(voices)} system voices.")
-        for i, v in enumerate(voices):
-             logger.debug(f"Voice [{i}]: {v.name}")
-
-        # 3. Вибір голосу
         if voice_idx is not None and 0 <= int(voice_idx) < len(voices):
             engine.setProperty('voice', voices[int(voice_idx)].id)
         else:
-            # Спроба знайти український голос автоматично (просунутий пошук)
             uk_keywords = ["ukrainian", "uk-ua", "olena", "anatol", "ирина", "ukr"]
-            found_uk = False
             for v in voices:
                 if any(k in v.name.lower() or k in v.id.lower() for k in uk_keywords):
                     engine.setProperty('voice', v.id)
-                    found_uk = True
                     break
-            
-            # Якщо української немає, а ми в UA-системі — David (0) або Zira (1) за замовчуванням
-            if not found_uk and len(voices) > 1:
-                # На Windows index 1 часто жіночий голос, який звучить м'якше
-                engine.setProperty('voice', voices[1].id)
+            else:
+                if len(voices) > 1:
+                    engine.setProperty('voice', voices[1].id)
 
-        engine.say(text)
+        engine.say(clean_text)
         engine.runAndWait()
         engine.stop()
         
-        return f"Vocal confirmation: '{text}'"
+        return f"Vocal confirmation: '{clean_text}'"
     except Exception as e:
+        logger.error(f"TTS Error: {e}")
         return f"TTS Local Error: {e}"
 
 @agent_tool
