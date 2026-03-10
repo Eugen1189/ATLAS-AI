@@ -58,8 +58,8 @@
     },
     "system": {
         "welcome": "🚀 Booting AXIS V2.5... (Modular Architecture)",
-        "ready": "\n--- AXIS is ready ---\n(Type text, or press ENTER to use voice input. Type 'exit' to quit)",
-        "prompt": "\n👤 You (text or ENTER for mic): ",
+        "ready": "\n--- AXIS is ready ---\n(Type text for commands. Voice listener is active in the background. Type 'exit' to quit)",
+        "prompt": "\n👤 You: ",
         "shutdown": "Shutting down AXIS systems...",
         "you_said": "🗣️ You said: {text}",
         "axis_said": "🤖 AXIS: {text}",
@@ -93,7 +93,8 @@
         "generating": "🔊 [Audio Output]: Generating voice...",
         "playing": "🔊 [Audio Output]: Playing audio...",
         "play_error": "🔊 [Audio Output]: Error playing audio: {error}",
-        "env_error": "Error: OPENAI_API_KEY not configured in .env file."
+        "env_error": "Error: OPENAI_API_KEY not configured in .env file.",
+        "starting_voice_listen": "🎙️ [AXIS]: Voice listener activated in background (Silent Mode)"
     },
     "file_master": {
         "reading_dir": "📁 [File_Master]: Reading directory `{path}`...",

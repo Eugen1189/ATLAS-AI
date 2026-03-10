@@ -36,17 +36,15 @@ def run_terminal_loop(axis):
     while True:
         try:
             command = input(lang.get("system.prompt")).strip()
+            if not command: continue # Do nothing on empty input
+            
             if command.lower() in ['exit', 'quit', 'вихід']:
                 print(lang.get("system.shutdown"))
                 os._exit(0) 
-                break
             if command.lower() == 'status':
-                print("\n📊 [SYSTEM] Vision: ONLINE | MCP: ACTIVE | TG: CONNECTED\n")
+                print("\n📊 [SYSTEM] Vision: ONLINE | MCP: ACTIVE | TG: CONNECTED | VOICE: BACKGROUND\n")
                 continue
-            if command == "":
-                command = listen_command()
-                if not command: continue
-                print(lang.get("system.you_said", text=command))
+            
             response = axis.think(command)
             print(lang.get("system.axis_said", text=response))
         except EOFError:

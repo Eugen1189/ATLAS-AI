@@ -33,7 +33,7 @@ def find_best_mic_index():
     # Default fallback
     return 0 
 
-def listen_command() -> str:
+def listen_command(silent: bool = False) -> str:
     """
     Listens to the microphone and converts voice to text.
     Uses dynamic device selection and improved status reporting.
@@ -43,8 +43,8 @@ def listen_command() -> str:
     
     try:
         with sr.Microphone(device_index=mic_idx) as source:
-            print(lang.get("audio.calibrating")) 
-            recognizer.adjust_for_ambient_noise(source, duration=1.5)
+            if not silent: print(lang.get("audio.calibrating")) 
+            recognizer.adjust_for_ambient_noise(source, duration=1.0)
             
             # Use manual threshold if provided in .env
             env_threshold = os.getenv("MIC_ENERGY_THRESHOLD")
@@ -54,10 +54,10 @@ def listen_command() -> str:
                 except ValueError:
                     pass
             
-            print(lang.get("audio.listening_start"))
-            audio = recognizer.listen(source, timeout=7, phrase_time_limit=15)
+            if not silent: print(lang.get("audio.listening_start"))
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
             
-            print(lang.get("audio.listening_done"))
+            if not silent: print(lang.get("audio.listening_done"))
             text = recognizer.recognize_google(audio, language="uk-UA")
             
             return text
@@ -65,33 +65,35 @@ def listen_command() -> str:
     except sr.WaitTimeoutError:
         return ""
     except sr.UnknownValueError:
-        print(lang.get("audio.recognition_error"))
+        if not silent: print(lang.get("audio.recognition_error"))
         return ""
     except Exception as e:
         # If default index fails, it might be a hardware mismatch
         if "device index" in str(e).lower():
-            print(f"⚠️ Mic Index Error: {e}. Check MIC_INDEX in .env")
+            if not silent: print(f"⚠️ Mic Index Error: {e}. Check MIC_INDEX in .env")
         else:
-            print(lang.get("audio.recording_error", error=e))
+            if not silent: print(lang.get("audio.recording_error", error=e))
         return ""
 
 def _voice_listener_loop(axis_core):
     """Background loop for phrase recognition."""
     # We delay start to let the system boot first
     time.sleep(5)
-    print(lang.get("audio.starting_voice_listen"))
+    print("🎙️ [AXIS]: Background Voice Listener ACTIVE (Silent Mode)")
     while True:
         try:
-            text = listen_command()
+            # We use silent=True to avoid flooding the console
+            text = listen_command(silent=True)
             if text and len(text.strip()) > 3:
-                # We can add a wake word here, e.g., "Аксис" or "Axis"
+                # Optional: Add local wake-word filtering here if needed
                 print(f"👂 [MICROPHONE]: {text}")
                 
                 # Tag source for rate limiting and context
                 source = "voice"
                 response = axis_core.think(text, source=source)
                 
-                # Feedback loop: Speak the answer or just confirmation
+                # Feedback loop: The reply is usually spoken by AXIS itself 
+                # through tool calls, but we also print it here.
                 print(f"🤖 [AXIS REPLY]: {response}")
                 
         except Exception as e:

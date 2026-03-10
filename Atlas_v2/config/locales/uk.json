@@ -58,8 +58,8 @@
     },
     "system": {
         "welcome": "🚀 Запуск AXIS V2.5... (Модульна Архітектура)",
-        "ready": "\n--- AXIS готовий до роботи ---\n(Введи текст, або просто натисни ENTER, щоб сказати голосом. Для виходу напиши 'exit')",
-        "prompt": "\n👤 Ви (текст або ENTER для мікрофона): ",
+        "ready": "\n--- AXIS готовий до роботи ---\n(Введи текст для команд. Голосовий слухач активний у фоні. Для виходу напиши 'exit')",
+        "prompt": "\n👤 Ви: ",
         "shutdown": "Вимкнення систем AXIS...",
         "you_said": "🗣️ Ви сказали: {text}",
         "axis_said": "🤖 AXIS: {text}",
@@ -93,7 +93,8 @@
         "generating": "🔊 [Audio Output]: Генерація голосу...",
         "playing": "🔊 [Audio Output]: Відтворення аудіо...",
         "play_error": "🔊 [Audio Output]: Помилка відтворення аудіо: {error}",
-        "env_error": "Помилка: OPENAI_API_KEY не знайдено в .env файлі."
+        "env_error": "Помилка: OPENAI_API_KEY не знайдено в .env файлі.",
+        "starting_voice_listen": "🎙️ [AXIS]: Голосовий слухач активований у фоні (Silent Mode)"
     },
     "file_master": {
         "reading_dir": "📁 [File_Master]: Читаю директорію `{path}`...",
