@@ -1,6 +1,8 @@
 import speech_recognition as sr
 from core.i18n import lang
 import os
+import threading
+import time
 
 def find_best_mic_index():
     """Dynamically finds the best microphone based on priority keywords."""
@@ -72,3 +74,34 @@ def listen_command() -> str:
         else:
             print(lang.get("audio.recording_error", error=e))
         return ""
+
+def _voice_listener_loop(axis_core):
+    """Background loop for phrase recognition."""
+    # We delay start to let the system boot first
+    time.sleep(5)
+    print(lang.get("audio.starting_voice_listen"))
+    while True:
+        try:
+            text = listen_command()
+            if text and len(text.strip()) > 3:
+                # We can add a wake word here, e.g., "Аксис" or "Axis"
+                print(f"👂 [MICROPHONE]: {text}")
+                
+                # Tag source for rate limiting and context
+                source = "voice"
+                response = axis_core.think(text, source=source)
+                
+                # Feedback loop: Speak the answer or just confirmation
+                print(f"🤖 [AXIS REPLY]: {response}")
+                
+        except Exception as e:
+            from core.logger import logger
+            logger.error("audio.listener_loop_error", error=str(e))
+            time.sleep(2) # Pause on error
+        
+        time.sleep(0.1)
+
+def start_voice_listener(axis_core):
+    """Starts the voice listener in a background thread."""
+    thread = threading.Thread(target=_voice_listener_loop, args=(axis_core,), daemon=True)
+    thread.start()

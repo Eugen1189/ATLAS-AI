@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.orchestrator import AxisCore
-from agent_skills.audio_interface.listener import listen_command
+from agent_skills.audio_interface.listener import listen_command, start_voice_listener
 from core.i18n import lang
 from agent_skills.telegram_bridge.listener import start_telegram_listener
 
@@ -55,7 +55,7 @@ def run_terminal_loop(axis):
             print(lang.get("system.sys_error", error=e))
 
 if __name__ == "__main__":
-    print("🚀 Booting AXIS V2.6.2 (Universal Core - Process Isolation Mode)...")
+    print("🚀 Booting AXIS V2.7.9 (Universal Core - Process Isolation Mode)...")
     
     # 1. Запускаємо візуал як окремий процес ПЕРШИМ
     launch_visuals()
@@ -73,6 +73,7 @@ if __name__ == "__main__":
         Healer().summarize_evolution()
         
         start_telegram_listener(axis)
+        start_voice_listener(axis)
         
         # Запускаємо цикл вводу
         run_terminal_loop(axis)
