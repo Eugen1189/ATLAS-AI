@@ -69,6 +69,15 @@ def test_resolve_path_magic_words():
             path_norm = path.replace("\\", "/")
             assert "C:/Users/testuser/Desktop/my_file.txt" in path_norm
 
+from agent_skills.vision_eye.manifest import take_screenshot
+
+def test_take_screenshot_success():
+    with patch("core.vision_engine.vision_engine.capture_screen", return_value="C:\\shots\\sc.png"):
+        res = take_screenshot()
+        data = json.loads(res)
+        assert data["status"] == "success"
+        assert "C:\\shots\\sc.png" in data["content"]
+
 def test_open_item_windows_success():
     with patch("platform.system", return_value="Windows"):
         with patch("os.path.exists", return_value=True):
