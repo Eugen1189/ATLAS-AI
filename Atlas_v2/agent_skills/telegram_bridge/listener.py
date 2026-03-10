@@ -9,6 +9,12 @@ from core.i18n import lang
 # Key: message_id, Value: {"event": threading.Event(), "result": None}
 PENDING_CONFIRMATIONS = {}
 
+def _format_response(raw_result) -> str:
+    """Filters out technical JSON data, returning only the user-facing response."""
+    if isinstance(raw_result, dict):
+        return raw_result.get("response", str(raw_result))
+    return str(raw_result)
+
 def _poll_telegram(axis_core):
     """Background polling process for Telegram messages and callbacks."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -112,26 +118,31 @@ def _poll_telegram(axis_core):
                                 tools = [t for t in f.get("tools", {})]
                                 
                                 report = (
-                                    f"<b>🖥 AXIS CORE STATUS</b>\n"
-                                    f"━━━━━━━━━━━━━━━━━━━━\n"
-                                    f"<b>🏠 IDEs:</b> {', '.join(ides)}\n"
-                                    f"<b>⚙️ Hardware:</b> {hw.get('ram_gb')}GB RAM | {hw.get('gpu')}\n"
-                                    f"<b>🛠 Tools:</b> {', '.join(tools[:5])}...\n"
-                                    f"<b>📁 Workspace:</b> {f.get('workspaces')[0] if f.get('workspaces') else 'Not mapped'}\n"
-                                    f"━━━━━━━━━━━━━━━━━━━━\n"
-                                    f"<i>Ready for Remote Command.</i>"
+                                    f"*🖥 AXIS CORE STATUS*\n"
+                                    f"──────────────\n"
+                                    f"*🏠 IDEs:* {', '.join(ides)}\n"
+                                    f"*⚙️ Hardware:* {hw.get('ram_gb')}GB RAM | {hw.get('gpu')}\n"
+                                    f"*🛠 Tools:* {', '.join(tools[:5])}...\n"
+                                    f"*📁 Workspace:* {f.get('workspaces')[0] if f.get('workspaces') else 'Not mapped'}\n"
+                                    f"──────────────\n"
+                                    f"_Ready for Remote Command._"
                                 )
-                                requests.post(send_url, json={"chat_id": chat_id, "text": report, "parse_mode": "HTML"})
+                                requests.post(send_url, json={"chat_id": chat_id, "text": report, "parse_mode": "Markdown"})
                                 continue
 
                             try:
                                 # Tag source with sender's Telegram ID for per-user rate limiting
                                 tg_source = f"telegram:{sender_id or chat_id}"
                                 context_prompt = f"(Telegram message): {text}"
-                                reply = axis_core.think(context_prompt, source=tg_source)
+                                raw_reply = axis_core.think(context_prompt, source=tg_source)
+                                reply = _format_response(raw_reply)
                                 
                                 print(lang.get("telegram.outgoing_reply"))
-                                requests.post(send_url, json={"chat_id": chat_id, "text": reply, "parse_mode": "HTML"})
+                                requests.post(send_url, json={
+                                    "chat_id": chat_id, 
+                                    "text": reply, 
+                                    "parse_mode": "Markdown"
+                                })
                             
                             except Exception as core_error:
                                 # NOW WE CAN SEE LIMIT ERRORS!

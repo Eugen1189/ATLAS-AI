@@ -80,7 +80,7 @@ class TestTelegramListener(unittest.TestCase):
 
     @patch('agent_skills.telegram_bridge.manifest.requests.post')
     def test_manifest_functions(self, mock_post):
-        from agent_skills.telegram_bridge.manifest import send_telegram_message, send_telegram_file, ask_user_confirmation
+        from agent_skills.telegram_bridge.manifest import send_telegram_message, send_telegram_photo, ask_user_confirmation
         
         def mock_getenv(k, d=None):
             if k == "TELEGRAM_BOT_TOKEN": return "dummy"
@@ -99,10 +99,10 @@ class TestTelegramListener(unittest.TestCase):
             with patch('builtins.open', new_callable=MagicMock):
                 mock_post.side_effect = None
                 mock_post.return_value.status_code = 500
-                send_telegram_file("test.png")
+                send_telegram_photo("test.png")
                 
                 mock_post.side_effect = Exception("File Error")
-                send_telegram_file("test.jpg")
+                send_telegram_photo("test.jpg")
                 
             # 3. Confirmation error
             mock_post.side_effect = None

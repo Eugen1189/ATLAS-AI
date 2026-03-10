@@ -1,6 +1,10 @@
 import sys
 import os
 import subprocess
+from dotenv import load_dotenv
+
+# Load environment variables as early as possible
+load_dotenv()
 
 # Встановлюємо шляхи для імпортів
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
