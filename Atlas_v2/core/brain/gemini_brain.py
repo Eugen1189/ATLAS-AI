@@ -16,13 +16,8 @@ class GeminiBrain(BaseBrain):
         if not api_key:
             return False
             
-        self.bp_manager = BlueprintManager()
-        self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
-        self.memory = memory_manager
-
-        # --- Initialize RAG ---
-        if self.memory.rag and self.memory.rag.is_available:
-            self.memory.rag.ensure_indexed()
+        # Use shared initialization logic
+        super().initialize(available_tools)
 
         genai.configure(api_key=api_key)
         

@@ -10,7 +10,8 @@ lang.get = MagicMock(side_effect=lambda key, **kwargs: f"Mocked {key}")
 
 # Now import the actual skills with the real @agent_tool wrapper
 from agent_skills.file_master.manifest import _resolve_path, list_directory, open_item, write_file, read_file
-from agent_skills.terminal_operator.manifest import execute_command, _check_safety
+from agent_skills.terminal_operator.manifest import execute_command
+from core.security.guard import SecurityGuard
 from agent_skills.audio_interface.manifest import speak
 from agent_skills.telegram_bridge.manifest import send_telegram_message, send_telegram_photo
 
@@ -91,18 +92,18 @@ def test_open_item_windows_success():
 # --- TEST TERMINAL OPERATOR ---
 
 def test_terminal_firewall_blocks_danger():
-    danger = _check_safety("del C:\\Windows\\System32\\hal.dll")
-    assert danger is not None
-    danger = _check_safety("format C:")
-    assert danger is not None
-    safe = _check_safety("dir /w")
-    assert safe is None
+    is_safe = SecurityGuard.is_safe_command("del C:\\Windows\\System32\\hal.dll")
+    assert is_safe is False
+    is_safe = SecurityGuard.is_safe_command("format C:")
+    assert is_safe is False
+    is_safe = SecurityGuard.is_safe_command("dir /w")
+    assert is_safe is True
 
 def test_execute_command_blocked_returns_json():
     res_json = execute_command("del system32")
     data = json.loads(res_json)
-    assert data["status"] == "success"
-    # Even though blocked, it returns 'success' to LLM but with System Instruction
+    assert data["status"] == "security_violation"
+    # Even though blocked, it returns context but with System Instruction
     assert "заблокована Фаєрволом" in data["content"]
     assert "SYSTEM_INSTRUCTION" in data
 

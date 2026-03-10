@@ -1,20 +1,28 @@
-# 🌌 AXIS v2.7.7 - Autonomous Spatial AI Framework
+# 🌌 AXIS v2.7.21 - Autonomous Spatial AI Framework
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.7.7-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-2.7.21-blue.svg)]()
 [![Core](https://img.shields.io/badge/Core-Local--First-green.svg)]()
 
-**AXIS** (Autonomous eXtended Intelligence System) is a high-performance, local-first AI agent designed for advanced OS interaction, developer automation, and multi-agent coordination. Built with a focus on reliability, security, and "Ironclad" parsing.
+**AXIS** (Autonomous eXtended Intelligence System) is a high-performance, local-first AI agent designed for advanced OS interaction. Built for extreme reliability via **Pure Architecture (v2.7.20+)**.
+
+---
+
+## 🏛️ Pure Architecture & Inheritance
+Starting with v2.7.19, AXIS implements a unified brain inheritance model:
+*   **BaseBrain**: Centralized core for Blueprint loading, RAG initialization, and Memory management.
+*   **OllamaBrain**: Local execution optimized for Qwen2.5-Coder.
+*   **GeminiBrain**: High-reasoning cloud fallback.
+*   **Unified Vision**: A centralized `VisionEngine` singleton prevents camera/screen access conflicts across processes.
 
 ---
 
 ## 🛠️ Key Technologies 2026
 
-*   **Brain**: [Ollama](https://ollama.ai/) running **Qwen2.5-Coder:7b** (Specialized for Tool Calling & Logic).
-*   **Security Architecture**: Universal `@agent_tool` decorator for fail-safe execution.
-*   **Protocol**: MCP (Model Context Protocol) Hub ready.
-*   **Connectivity**: Integrated **Telegram Bridge** for remote smartphone control.
-*   **Audio**: 100% Offline TTS via `pyttsx3`.
+*   **Brain**: [Ollama](https://ollama.ai/) running **Qwen2.5-Coder:7b**.
+*   **Security**: Aggressive JSON repair + Command Firewall.
+*   **Audio**: Single-pass calibration for instant voice responsiveness.
+*   **Vision**: Regional high-res analysis via `VisionEngine`.
 
 ---
 
@@ -34,33 +42,33 @@ Deep multi-step research using Perplexity-style synthesis and recursive web scra
 
 ---
 
-## 🚀 Quick Start
+## 📅 ROADMAP 2026
+*   **Wait-Word 2.0** - Instant-start audio capture [COMPLETED].
+*   **Pure Architecture** - Elimination of dead code and redundant logic [COMPLETED].
+*   **Q2: Multi-Agent Protocol** - Collaboration between Skill-Shards.
 
-1.  **Environment**: Ensure Python 3.11+ and [Ollama](https://ollama.ai/) are installed.
-2.  **Model**: `ollama run qwen2.5-coder:7b`
-3.  **Dependencies**:
+---
+
+## 🚀 Setup
+
+1.  **Dependencies** (Cleaned for v2.7.20):
     ```bash
     pip install -e .
     ```
-4.  **Configure**: Update `.env` with your API keys (Perplexity, Telegram).
-5.  **Run**:
-    ```bash
-    python Atlas_v2/main.py
-    ```
+2.  **Environment**: Update `.env` (Ollama, Gemini, Telegram tokens).
+3.  **Run**: `python Atlas_v2/main.py`
 
 ---
 
 ## 🛡️ "Ironclad" Reliability System
-
-Unlike standard agents, AXIS implements a multi-layer defense:
-1.  **The Parser**: Aggressive JSON repair for malformed LLM outputs.
-2.  **The Wrapper**: Every skill is isolated; tool failures trigger a `SYSTEM_INSTRUCTION` instead of a crash.
-3.  **The Firewall**: Regex-based command filtering prevents "AI hallucinations" from damaging the OS.
+1.  **The Parser**: Intercepts teacher-hallucinations and repairs malformed JSON.
+2.  **The Wrapper**: Every `@agent_tool` is functionally isolated.
+3.  **The Firewall**: Blocks destructive OS commands via regex protection.
 
 ---
 
 ## 📱 Remote Control (Telegram)
-Control your PC from anywhere. AXIS can send reports, screenshots of your work, and request Human-In-The-Loop (HITL) confirmations for critical actions.
+Control your PC from anywhere. AXIS sends screenshots, hardware reports, and asks for confirmations before critical operations.
 
 ---
 

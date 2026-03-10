@@ -3,8 +3,7 @@ import re
 import json
 import inspect
 import traceback
-from typing import get_type_hints
-from core.logger import logger, time_it
+from core.logger import logger
 from core.brain.blueprints import BlueprintManager
 from core.brain.memory import memory_manager
 from core.security.guard import SecurityGuard
@@ -61,6 +60,23 @@ def parse_llm_response(response_text: str) -> dict | None:
                 return data
     except Exception as e:
         logger.debug(f"JSON Repair failed: {e}")
+
+    # 4. Aggressive Intent Recovery (Fallback)
+    # Якщо модель почала писати ввічливу відповідь замість дії, примусово повертаємо макрос
+    lower_text = response_text.lower()
+    intent_keywords = ["звіт", "скріншот", "що вдома", "статус", "status", "screenshot"]
+    if any(k in lower_text for k in intent_keywords):
+        if "tool_name" not in response_text:
+            logger.warning("brain.aggressive_recovery", reason="Intent detected without JSON")
+            return {"tool_name": "send_home_report", "arguments": {}}
+
+    # 5. Hallucination Discovery (Code Block Interceptor)
+    # Якщо модель почала писати код (def/import/class) замість дії, примусово перемикаємо на пошук
+    if "```python" in response_text or "def " in response_text or "import " in response_text:
+        if "tool_name" not in response_text:
+             logger.warning("brain.hallucination_intercepted", reason="Model tried to teach instead of doing")
+             # Redirect to reading README/Project info to find actual deadlines/data
+             return {"tool_name": "read_file", "arguments": {"filepath": "README.md"}}
 
     return None
 
@@ -132,7 +148,7 @@ class OllamaBrain(BaseBrain):
         manifest = (
             "You are AXIS, a highly capable OS-agent and developer assistant.\n"
             f"{dynamic_context}\n\n"
-            "### MISSION PROTOCOL (v2.7.9):\n"
+            "### MISSION PROTOCOL (v2.7.17):\n"
             "1. **Task Focus**: Complete the USER's primary request BEFORE performing secondary analysis. If the user asks for a 'click', do not explore folders or read .env files.\n"
             "2. **Thought Phase**: Start with <thought>. First sentence MUST be: 'Моя головна мета зараз: [ціль користувача]'. Discuss ONLY steps needed for this goal.\n"
             "3. **Self-Exploration Block**: DO NOT read `.env`, `.git/` or your own core source files unless explicitly asked to debug them. This is a MAJOR security violation.\n"
@@ -140,16 +156,24 @@ class OllamaBrain(BaseBrain):
             "5. **Format**: One JSON `<tool_call>` per reasoning step. If arguments are unknown, ask the user instead of guessing `null`.\n"
             "6. **Silence Rule**: IF YOU GENERATE A JSON TOOL CALL, DO NOT WRITE ANY OTHER TEXT. Just output the JSON and stop.\n"
             "7. **Environment**: Windows 11. Today: March 10, 2026. Relative path root is `c:\\Projects\\Atlas`.\n"
-            "8. **КРИТИЧНЕ ПРАВИЛО**: ТИ НЕ МАЄШ ПРАВА ВИГАДУВАТИ ВИВІД КОМАНД! Використовуй тільки реальні дані з інструментів.\n"
-            "9. **ПРОТОКОЛ ВИКОНАННЯ (EXECUTION ONLY)**:\n"
+            "8. **МИТТЄВИЙ ЗВІТ**: Для запитів 'що вдома', 'статус ПК', 'скріншот екрана' ЗАВЖДИ використовуй макрос `send_home_report`.\n"
+            "9. **КРИТИЧНЕ ПРАВИЛО**: ТИ НЕ МАЄШ ПРАВА ВИГАДУВАТИ ВИВІД КОМАНД! Використовуй тільки реальні дані з інструментів.\n"
+            "10. **ПРОТОКОЛ ВИКОНАННЯ (EXECUTION ONLY)**:\n"
             "   - Якщо користувач просить виконати дію (зробити скріншот, знайти файл, надіслати звіт), ТИ НЕ МАЄШ ПРАВА ПОЯСНЮВАТИ, ЯК ЦЕ ЗРОБИТИ.\n"
             "   - ТИ МАЄШ НЕГАЙНО ВИКЛИКАТИ ВІДПОВІДНІ ІНСТРУМЕНТИ.\n"
             "   - Після отримання результату від інструменту, просто коротко відзвітуй: \"Готово, Командоре\".\n"
             "   - НІКОЛИ не пиши код на Python у відповідь, якщо тебе не просили написати код. ВИКОРИСТОВУЙ JSON ДЛЯ ДІЙ.\n"
-            "10. **ГОЛОСОВИЙ ПРОТОКОЛ (VOICE & LOGIC)**:\n"
+            "11. **ГОЛОСОВИЙ ПРОТОКОЛ (VOICE & LOGIC)**:\n"
             "    - Текст для `speak` не повинен містити Markdown-символів (#, *, _).\n"
             "    - Використовуй `speak` тільки для коротких підтверджень («Система готова», «Завдання виконано»).\n"
             "    - Якщо ти використовуєш `speak`, ти ЗОБОВ'ЯЗАНИЙ також надіслати текстовий результат у Telegram/Terminal, щоб користувач мав лог твоїх дій.\n\n"
+            "### ACTION OVERRIDE:\n"
+            "IF THE USER ASKS A QUESTION THAT REQUIRES COMPUTER ACTION OR STATUS: YOU MUST GENERATE A TOOL CALL IMMEDIATELY. DO NOT SAY 'I can do that' OR 'Here is how to do it'. DO IT.\n\n"
+            "### DIRECT ACTION PROTOCOL:\n"
+            "- запитання про дедлайни, плани або 'що робити далі' вимагають пошуку у файлах (README.md, todo.txt, пріоритети). Використовуй `read_file` або `list_directory` для пошуку контексту.\n"
+            "- НІКОЛИ не кажи 'Я не знаю', поки не перевіриш файли проекту.\n\n"
+            "### HALLUCINATION BLOCK:\n"
+            "ЗАБОРОНЕНО писати код на Python, якщо Командор не попросив про це ПРЯМО. Не намагайся 'навчити' користувача або показати приклад. ВИКОНУЙ ЗАВДАННЯ ЧЕРЕЗ JSON.\n\n"
             "### AVAILABLE TOOLS:\n"
         )
         
@@ -182,12 +206,8 @@ class OllamaBrain(BaseBrain):
             logger.error("ollama.missing", reason="ollama python package is not installed")
             return False
 
-        self.bp_manager = BlueprintManager()
-        self.bp_manager.load_blueprint(os.getenv("AXIS_BLUEPRINT", "default"))
-        self.memory = memory_manager
-
-        if self.memory.rag and self.memory.rag.is_available:
-            self.memory.rag.ensure_indexed()
+        # Use shared initialization logic
+        super().initialize(available_tools)
 
         self.available_tools = available_tools
         self.system_prompt = self._build_tool_manifest(available_tools)

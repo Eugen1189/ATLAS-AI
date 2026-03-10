@@ -439,10 +439,10 @@ class VisionManager:
                         root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
                         if root_path not in sys.path:
                             sys.path.append(root_path)
-                        from agent_skills.telegram_bridge.manifest import send_telegram_file
+                        from agent_skills.telegram_bridge.manifest import send_telegram_photo
                         
                         caption = lang.get("vision.tg_caption") + f"\n\nJSON Log:\n{json.dumps(log_data, ensure_ascii=False, indent=2)}"
-                        send_telegram_file(file_path, caption=caption)
+                        send_telegram_photo(file_path, caption=caption)
                     except Exception as ex:
                         print(lang.get("vision.tg_error", error=ex))
             except Exception as e:

@@ -5,10 +5,12 @@ import json
 from core.i18n import lang
 from core.vision_engine import vision_engine
 from core.logger import logger
+from core.skills.wrapper import agent_tool
 
 # Security: Failsafe enabled (move mouse to corner to abort)
 pyautogui.FAILSAFE = True
 
+@agent_tool
 def click_screen(x: int, y: int, clicks: int = 1, button: str = 'left') -> str:
     """
     Standard 2026 Mouse Interaction.
@@ -21,6 +23,7 @@ def click_screen(x: int, y: int, clicks: int = 1, button: str = 'left') -> str:
     except Exception as e:
         return f"Mouse Action Failed: {e}"
 
+@agent_tool
 def type_text(text: str, press_enter: bool = False, delay: float = 0.01) -> str:
     """
     Types text with human-like delay.
@@ -34,6 +37,7 @@ def type_text(text: str, press_enter: bool = False, delay: float = 0.01) -> str:
     except Exception as e:
         return f"Keyboard Action Failed: {e}"
 
+@agent_tool
 def press_hotkey(hotkey: str) -> str:
     """
     Presses complex hotkeys. Example: 'ctrl,alt,delete' or 'win,r'.
@@ -45,11 +49,13 @@ def press_hotkey(hotkey: str) -> str:
     except Exception as e:
         return f"Hotkey Error: {e}"
 
+@agent_tool
 def get_screen_resolution() -> str:
     """Returns the current screen resolution (width, height)."""
     w, h = pyautogui.size()
     return f"Current Screen Resolution: {w}x{h}"
 
+@agent_tool
 def get_active_window() -> str:
     """Returns the title of the currently focused window."""
     try:
@@ -58,6 +64,7 @@ def get_active_window() -> str:
         return f"Current Window: {win.title}" if win else "Desktop"
     except Exception: return "Unknown Window (Requires pygetwindow)"
 
+@agent_tool
 def find_and_click_text(target_text: str) -> str:
     """
     High-Level 2026 Skill: Uses Vision Engine to find text on screen and clicks it.

@@ -33,95 +33,108 @@ def find_best_mic_index():
     # Default fallback
     return 0 
 
-def listen_command(silent: bool = False) -> str:
+class VoiceCommandListener:
     """
-    Listens to the microphone and converts voice to text.
-    Uses dynamic device selection and improved status reporting.
+    Standard 2026 Audio Input Controller.
+    Handles wake-word detection and command capturing with phrase-burst logic.
     """
-    recognizer = sr.Recognizer()
-    mic_idx = find_best_mic_index()
-    
-    try:
-        with sr.Microphone(device_index=mic_idx) as source:
-            if not silent: print(lang.get("audio.calibrating")) 
-            recognizer.adjust_for_ambient_noise(source, duration=1.0)
-            
-            # Use manual threshold if provided in .env
-            env_threshold = os.getenv("MIC_ENERGY_THRESHOLD")
-            if env_threshold:
-                try:
-                    recognizer.energy_threshold = float(env_threshold)
-                except ValueError:
-                    pass
-            
-            if not silent: print(lang.get("audio.listening_start"))
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-            
-            if not silent: print(lang.get("audio.listening_done"))
-            text = recognizer.recognize_google(audio, language="uk-UA")
-            
-            return text
-            
-    except sr.WaitTimeoutError:
-        return ""
-    except sr.UnknownValueError:
-        if not silent: print(lang.get("audio.recognition_error"))
-        return ""
-    except Exception as e:
-        # If default index fails, it might be a hardware mismatch
-        if "device index" in str(e).lower():
-            if not silent: print(f"⚠️ Mic Index Error: {e}. Check MIC_INDEX in .env")
-        else:
-            if not silent: print(lang.get("audio.recording_error", error=e))
-        return ""
+    def __init__(self, axis_core, device_index: int = None):
+        self.axis = axis_core
+        self.device_index = device_index if device_index is not None else find_best_mic_index()
+        self.recognizer = sr.Recognizer()
+        self.recognizer.dynamic_energy_threshold = True # Enable auto-adjust
+        self.wake_words = ["аксис", "аксіс", "axis"]
+        self._running = False
+        self._calibrated = False
 
-def _voice_listener_loop(axis_core):
-    """Background loop with 'Phrase-Burst' logic (Wake + Command in one go)."""
-    print("🎙️ [AXIS]: Voice Listener ACTIVE (Local-First Listening)")
-    wake_words = ["аксис", "аксіс", "axis"]
-    
-    while True:
+    def calibrate(self):
+        """Initial calibration for ambient noise."""
         try:
-            # 1. Listen in silent mode for the wake word
-            text = listen_command(silent=True)
-            if text:
-                query = text.strip().lower()
+            with sr.Microphone(device_index=self.device_index) as source:
+                print(f"🎙️ [VOICE]: Calibrating MT-MC14 (Index {self.device_index})...")
+                self.recognizer.adjust_for_ambient_noise(source, duration=1.5)
                 
-                # Check if wake word is present
-                trigger_word = next((w for w in wake_words if w in query), None)
+                # Boost sensitivity if needed
+                env_threshold = os.getenv("MIC_ENERGY_THRESHOLD")
+                if env_threshold:
+                    self.recognizer.energy_threshold = float(env_threshold)
+                    self.recognizer.dynamic_energy_threshold = False
+                
+                print(f"✅ [VOICE]: Ready. Threshold: {self.recognizer.energy_threshold:.1f}")
+                self._calibrated = True
+        except Exception as e:
+            print(f"⚠️ [VOICE]: Calibration Error: {e}")
+
+    def listen_command(self, silent: bool = False) -> str:
+        """Captures audio and converts to text via local/cloud engine."""
+        if not self._calibrated: self.calibrate()
+        
+        try:
+            with sr.Microphone(device_index=self.device_index) as source:
+                if not silent: print(lang.get("audio.listening_start"))
+                # Reduced timeout for wake-word (silent) phase to be more responsive
+                timeout = 10 if not silent else 5
+                audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
+                
+                if not silent: print(lang.get("audio.listening_done"))
+                return self.recognizer.recognize_google(audio, language="uk-UA")
+        except sr.WaitTimeoutError:
+            return ""
+        except sr.UnknownValueError:
+            return ""
+        except Exception as e:
+            if not silent: 
+                 if "device index" in str(e).lower():
+                     print(f"⚠️ Mic Index {self.device_index} Error.")
+                 else:
+                     print(f"🎙️ Audio Err: {e}")
+            return ""
+
+    def _loop(self):
+        """Phrase-Burst background loop."""
+        print(f"🎙️ [AXIS]: Voice Listener ACTIVE (Using Mic Index: {self.device_index})")
+        while self._running:
+            try:
+                text = self.listen_command(silent=True)
+                if not text: continue
+                
+                query = text.strip().lower()
+                trigger_word = next((w for w in self.wake_words if w in query), None)
                 
                 if trigger_word:
-                    print(f"🔔 [EVENT]: {trigger_word.upper()} DETECTED")
-                    
-                    # Clean the command part: "Аксис зроби скріншот" -> "зроби скріншот"
+                    print(f"🔔 [WAKE WORD DETECTED]: {trigger_word}")
                     clean_command = query.replace(trigger_word, "").strip()
                     
                     if clean_command:
-                        # Case A: User said wake word + command in one phrase
-                        print(f"👂 [DIRECT COMMAND]: {clean_command}")
-                        response = axis_core.think(clean_command, source="voice")
-                        print(f"🤖 [AXIS REPLY]: {response}")
+                        print(f"🚀 [DIRECT]: {clean_command}")
+                        response = self.axis.think(clean_command, source="voice")
+                        print(f"🤖 [AXIS]: {response}")
                     else:
-                        # Case B: User said ONLY wake word, wait for input
-                        axis_core.think("озвуч 'Слухаю вас, Командоре'")
+                        # Follow-up phase
+                        time.sleep(0.5) # Stability pause
+                        self.axis.think("озвуч 'Слухаю вас, Командоре'")
                         print("🚀 [LISTENING FOR COMMAND...]")
-                        command_text = listen_command(silent=False)
-                        
+                        command_text = self.listen_command(silent=False)
                         if command_text:
                             print(f"👂 [FOLLOW-UP]: {command_text}")
-                            response = axis_core.think(command_text, source="voice")
-                            print(f"🤖 [AXIS REPLY]: {response}")
+                            response = self.axis.think(command_text, source="voice")
+                            print(f"🤖 [AXIS]: {response}")
                         else:
-                            print("💤 [TIMEOUT] Returning to sleep.")
-                
-        except Exception as e:
-            from core.logger import logger
-            logger.error(f"audio.listener_loop_error: {e}")
-            time.sleep(1)
-        
-        time.sleep(0.1)
+                            print("💤 [TIMEOUT] Back to idle.")
+            except Exception as e:
+                time.sleep(1)
 
-def start_voice_listener(axis_core):
-    """Starts the voice listener in a background thread."""
-    thread = threading.Thread(target=_voice_listener_loop, args=(axis_core,), daemon=True)
-    thread.start()
+    def start(self):
+        """Runs the listener in a daemon thread."""
+        self._running = True
+        threading.Thread(target=self._loop, daemon=True).start()
+
+def start_voice_listener(axis_core, device_index: int = None):
+    """Bridge for main.py."""
+    listener = VoiceCommandListener(axis_core, device_index=device_index)
+    listener.start()
+    return listener
+
+def listen_command(silent: bool = False, device_index: int = None) -> str:
+    """Standalone compatibility wrapper for voice-to-text conversion."""
+    return VoiceCommandListener(None, device_index=device_index).listen_command(silent=silent)

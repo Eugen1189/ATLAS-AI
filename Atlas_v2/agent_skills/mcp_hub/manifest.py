@@ -1,6 +1,8 @@
 ﻿import asyncio
 from .bridge import get_bridge
+from core.skills.wrapper import agent_tool
 
+@agent_tool
 def call_mcp_tool(server: str, tool: str, args: dict) -> str:
     """Standard 2026 Ecosystem Bridge (MCP). Connects to external services (Docker, GitHub, Notion)."""
     bridge = get_bridge()
@@ -14,6 +16,7 @@ def call_mcp_tool(server: str, tool: str, args: dict) -> str:
         return loop.run_until_complete(_do())
     except Exception as e: return f"MCP Call Err: {e}"
 
+@agent_tool
 def list_mcp_capabilities() -> str:
     """Lists all available servers and their tools via Model Context Protocol."""
     bridge = get_bridge()

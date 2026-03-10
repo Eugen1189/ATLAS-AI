@@ -41,12 +41,6 @@ def take_screenshot() -> str:
     return result if "Error" not in result else f"Failed: {result}"
 
 @agent_tool
-def capture_screen_context() -> str:
-    """Takes a screenshot and returns a description for the brain."""
-    result = vision_engine.capture_screen()
-    return f"Screenshot saved at: {result}" if "Error" not in result else result
-
-@agent_tool
 def analyze_visual_context(prompt: str = None) -> str:
     """Captures camera image and analyzes it using Moondream2 logic."""
     path = vision_engine.capture_camera()
@@ -69,7 +63,6 @@ EXPORTED_TOOLS = [
     toggle_gestures, 
     capture_visual_context, 
     take_screenshot,
-    capture_screen_context,
     analyze_visual_context, 
     analyze_screen_region
 ]

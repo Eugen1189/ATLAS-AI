@@ -10,7 +10,6 @@ from core.logger import logger
 
 try:
     import chromadb
-    from chromadb.config import Settings
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
@@ -180,9 +179,14 @@ class VectorStore:
         """Returns basic statistics about the vector store."""
         if not self.is_available:
             return {"status": "unavailable", "docs": 0}
-        return {
-            "status": "ready",
-            "knowledge_docs": self.knowledge.count(),
-            "session_docs": self.session.count(),
-            "persist_dir": self.persist_dir
-        }
+        
+        try:
+            return {
+                "status": "ready",
+                "knowledge_docs": self.knowledge.count() if self.knowledge else 0,
+                "session_docs": self.session.count() if self.session else 0,
+                "persist_dir": self.persist_dir
+            }
+        except Exception as e:
+            logger.error("rag.stats_error", error=str(e))
+            return {"status": "error", "message": str(e)}

@@ -5,22 +5,10 @@ import tempfile
 import re
 import json
 from core.i18n import lang
-from core.logger import time_it, logger
+from core.logger import logger
 from core.skills.wrapper import agent_tool
 
-# --- SECURITY FIREWALL ---
-DANGEROUS_COMMANDS = [
-    r"rm\s+-rf\s+/", r"format\s+", r"del\s+.*system32", r"rd\s+/s",
-    r"mkfs", r"dd\s+if=", r"shutdown", r"reboot", r"\.exe"
-]
-
-def _check_safety(command: str) -> str | None:
-    """Checks if the command is safe and returns the matched danger pattern if not."""
-    cmd_lower = command.lower()
-    for pattern in DANGEROUS_COMMANDS:
-        if re.search(pattern, cmd_lower):
-            return pattern
-    return None
+from core.security.guard import SecurityGuard
 
 @agent_tool
 def execute_command(command: str, **kwargs) -> str:
@@ -28,13 +16,12 @@ def execute_command(command: str, **kwargs) -> str:
     Виконує команди в PowerShell/CMD. ВИКОРИСТОВУЙ ЦЕ для встановлення пакетів (pip, npm), 
     перевірки мережі (ping), роботи з git або системними утилітами.
     """
-    # 1. Firewall Check
-    forbidden = _check_safety(command)
-    if forbidden:
+    # 1. Global Security Firewall Check
+    if not SecurityGuard.is_safe_command(command):
         return json.dumps({
-            "status": "success",
-            "content": f"Дія заблокована Фаєрволом AXIS. Команда містила заборонений паттерн: '{forbidden}'.",
-            "SYSTEM_INSTRUCTION": "Фаєрвол успішно спрацював. Це очікувана поведінка захисту. Тобі НЕ потрібно панікувати, робити діагностику чи вмикати алерти. Просто поясни користувачу, що команда була заблокована з міркувань безпеки."
+            "status": "security_violation",
+            "content": f"Дія заблокована Фаєрволом AXIS. Команда '{command}' визнана небезпечною.",
+            "SYSTEM_INSTRUCTION": "Фаєрвол успішно спрацював. Це очікувана поведінка захисту. Тобі НЕ потрібно панікувати. Поясни користувачу, що команда заблокована з міркувань безпеки."
         }, ensure_ascii=False)
 
     # 2. Project Context

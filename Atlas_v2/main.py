@@ -15,6 +15,22 @@ from agent_skills.audio_interface.listener import listen_command, start_voice_li
 from core.i18n import lang
 from agent_skills.telegram_bridge.listener import start_telegram_listener
 
+def cleanup_zombie_processes():
+    """Cleans up hung HUD or Python processes using port 5005 to prevent 'Port busy' errors."""
+    if os.name == 'nt':
+        try:
+            # Find PID using port 5005
+            cmd = "netstat -ano | findstr :5005"
+            output = subprocess.check_output(cmd, shell=True, text=True)
+            for line in output.splitlines():
+                if "LISTENING" in line or "UDP" in line:
+                    pid = line.strip().split()[-1]
+                    if pid != "0":
+                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                        print(f"🧹 Killed zombie process holding port 5005 (PID: {pid})")
+        except Exception:
+            pass
+
 def launch_visuals():
     """Запускає HUD як окремий процес Windows для ізоляції пам'яті"""
     hud_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "ui", "hud.py")
@@ -53,7 +69,8 @@ def run_terminal_loop(axis):
             print(lang.get("system.sys_error", error=e))
 
 if __name__ == "__main__":
-    print("🚀 Booting AXIS V2.7.9 (Universal Core - Process Isolation Mode)...")
+    cleanup_zombie_processes()
+    print("🚀 Booting AXIS V2.7.21 (Universal Core - Process Isolation Mode)...")
     
     # 1. Запускаємо візуал як окремий процес ПЕРШИМ
     launch_visuals()
@@ -71,7 +88,9 @@ if __name__ == "__main__":
         Healer().summarize_evolution()
         
         start_telegram_listener(axis)
-        start_voice_listener(axis)
+        
+        # 🎙️ VOICE BOOT: Using specific hardware index for MT-MC14
+        start_voice_listener(axis, device_index=1)
         
         # Запускаємо цикл вводу
         run_terminal_loop(axis)

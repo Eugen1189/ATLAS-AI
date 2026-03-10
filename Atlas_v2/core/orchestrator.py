@@ -20,7 +20,7 @@ from core.brain import BrainFactory
 class AxisCore:
     """Main logic for the AXIS agent orchestrator."""
     def __init__(self):
-        logger.info("system.booting", version="2.6.2")
+        logger.info("system.booting", version="2.7.21")
         
         # 1. First Pass: Discovery (Zero-Config)
         primary_workspace = None

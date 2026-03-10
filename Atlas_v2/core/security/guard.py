@@ -14,10 +14,15 @@ class SecurityGuard:
 
     DANGEROUS_PATTERNS = [
         r"rm\s+-rf\s+/",            # Root deletion
-        r"format\s+[A-Z]:",         # Disk formatting
-        r"del\s+/s\s+/q\s+C:",      # Windows mass deletion
+        r"format\s+",               # Disk formatting
+        r"del\s+.*system32",        # Windows system deletion
+        r"rd\s+/s",                 # Recursive dir deletion
+        r"mkfs",                    # Filesystem creation
+        r"dd\s+if=",                # Direct disk write
+        r"shutdown",                # OS shutdown
+        r"reboot",                  # OS reboot
+        r"\.exe",                   # Untrusted executables
         r"powershell\s+.*-ExecutionPolicy\s+Bypass", # Policy bypass
-        r"mkfs\..*",                 # Filesystem creation
         r"> /dev/sd[a-z]",          # Direct disk write
         r":\(\){ :\|:& };:",        # Fork bomb
     ]

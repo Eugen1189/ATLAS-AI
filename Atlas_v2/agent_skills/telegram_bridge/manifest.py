@@ -89,5 +89,48 @@ def ask_user_confirmation(prompt: str, **kwargs) -> bool:
     except Exception: 
         return False
 
-EXPORTED_TOOLS = [send_telegram_message, send_telegram_photo, ask_user_confirmation]
+@agent_tool
+def send_home_report(**kwargs) -> str:
+    """
+    МАКРО-КОМАНДА: Робить повний звіт про стан комп'ютера (скріншот + статус заліза) 
+    і негайно відправляє його в Telegram Командору.
+    Використовуй це, коли користувач питає 'що вдома', 'який статус' або 'надішли скріншот і стан системи'.
+    """
+    from agent_skills.vision_eye.manifest import take_screenshot
+    from agent_skills.diagnostics.manifest import deep_system_scan
+    
+    # 1. Take Screenshot
+    try:
+        shot_res = json.loads(take_screenshot())
+        if shot_res.get("status") != "success":
+            return f"Error taking screenshot: {shot_res.get('message')}"
+        path = shot_res.get("content")
+    except Exception as e:
+        return f"Screenshot failed: {e}"
+
+    # 2. Get System Stats
+    cpu, ram = "??", "??"
+    try:
+        sys_res = json.loads(deep_system_scan())
+        if sys_res.get("status") == "success":
+            data = sys_res.get("content", {})
+            cpu = data.get("cpu_usage_percent", "??")
+            ram = data.get("ram_percent", "??")
+    except Exception:
+        pass
+        
+    caption = f"🛰️ Звіт AXIS: Система в нормі.\n🔥 CPU: {cpu}%\n🧠 RAM: {ram}%"
+    
+    # 3. Send to Telegram
+    res = send_telegram_photo(filepath=path, caption=caption)
+    
+    # 4. Vocal feedback
+    try:
+        from agent_skills.audio_interface.manifest import speak
+        speak(text="Звіт надіслано, Командоре.")
+    except Exception: pass
+    
+    return res
+
+EXPORTED_TOOLS = [send_telegram_message, send_telegram_photo, ask_user_confirmation, send_home_report]
 

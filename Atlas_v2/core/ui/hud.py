@@ -1,8 +1,8 @@
 import time
 import sys
 from datetime import datetime
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QFrame, QHBoxLayout
-from PyQt6.QtCore import Qt, pyqtSignal, QObject, QTimer, QThread
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 import socket
 import json
@@ -155,7 +155,7 @@ class AxisHUD(QMainWindow):
         """Pass mouse inputs through the window."""
         self.setWindowFlag(Qt.WindowType.WindowTransparentForInput)
 
-    def paintEvent(self, event):
+    def paintEvent(self, _event):
         """Draws the Cyber-Vision Aura around the detected hand position."""
         if not self.hand_pos or self.hand_pos.get("state") == "IDLE":
             return
