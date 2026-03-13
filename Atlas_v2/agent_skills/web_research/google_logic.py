@@ -1,14 +1,13 @@
-import json
-from googlesearch import search
-from core.i18n import lang
 from core.logger import logger
 from core.skills.wrapper import agent_tool
 
 @agent_tool
 def google_research(query: str, **kwargs) -> list[str]:
-    """
+    \"\"\"
     Performs a quick search in Google and returns a list of relevant URLs.
-    """
+    \"\"\"
+    from googlesearch import search
+    
     num_results = kwargs.get("num_results", 5)
     search_lang = kwargs.get("search_lang", "uk")
     

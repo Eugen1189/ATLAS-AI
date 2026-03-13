@@ -1,9 +1,11 @@
-﻿import os
+import os
 import subprocess
 from core.system.discovery import EnvironmentDiscoverer
 from pathlib import Path
+from core.skills.wrapper import agent_tool
 
-def open_workspace(project: str, ide: str = None) -> str:
+@agent_tool
+def open_workspace(project: str, ide: str = None, **kwargs) -> str:
     """Standard 2026 Workspace Loader. Autodetects IDEs and project paths."""
     disc = EnvironmentDiscoverer()
     f = disc.run_full_discovery(store_in_memory=False)
@@ -26,7 +28,8 @@ def open_workspace(project: str, ide: str = None) -> str:
     subprocess.Popen(f'{cmd} "{target}"', shell=True)
     return f"🚀 [PROJECT READY]: '{project}' opened in {ide}."
 
-def setup_new_project(name: str) -> str:
+@agent_tool
+def setup_new_project(name: str, **kwargs) -> str:
     """Standard 2026 Scaffold: Creates a specialized folder structure."""
     disc = EnvironmentDiscoverer()
     ws = disc.run_full_discovery(store_in_memory=False).get("primary_workspace")
@@ -39,7 +42,8 @@ def setup_new_project(name: str) -> str:
         return f"✨ [INIT DONE]: project {name} created."
     except Exception as e: return f"Err: {e}"
 
-def get_workspace_summary() -> str:
+@agent_tool
+def get_workspace_summary(**kwargs) -> str:
     """Returns a full audit of currently tracked workspaces and projects."""
     disc = EnvironmentDiscoverer()
     f = disc.run_full_discovery(store_in_memory=False)
@@ -47,3 +51,4 @@ def get_workspace_summary() -> str:
     return f"### Workspaces Diagnostic:\nPrimary: {f.get('primary_workspace')}\nTracked: {ws}"
 
 EXPORTED_TOOLS = [open_workspace, setup_new_project, get_workspace_summary]
+

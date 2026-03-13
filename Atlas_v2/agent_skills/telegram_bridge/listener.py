@@ -10,16 +10,27 @@ from core.i18n import lang
 PENDING_CONFIRMATIONS = {}
 
 def _format_response(raw_result) -> str:
-    """Filters out technical JSON data, returning only the user-facing response."""
+    """Filters out technical JSON data, returning only the user-facing response (v2.9.7)."""
     if isinstance(raw_result, dict):
         return raw_result.get("response", str(raw_result))
-    return str(raw_result)
+    
+    text = str(raw_result).strip()
+    
+    # If the response is pure JSON tool call (due to Strict Mode)
+    if text.startswith('{') and '"tool_name"' in text:
+        try:
+            import json
+            data = json.loads(text)
+            return f"[AXIS]: Виконую {data.get('tool_name')}..."
+        except: pass
+        
+    return text
 
 def _poll_telegram(axis_core):
     """Background polling process for Telegram messages and callbacks."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
-    load_dotenv(dotenv_path=env_path)
+    from core.system.path_utils import load_environment
+    load_environment()
+
     
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -95,14 +106,49 @@ def _poll_telegram(axis_core):
                         text = message.get("text")
                         voice = message.get("voice")
                         
-                        # Process voice messages
+                        # Process voice messages (v2.9.6 - Voice Bridge)
                         if voice:
                             print(lang.get("telegram.incoming_voice"))
-                            requests.post(send_url, json={
-                                "chat_id": chat_id, 
-                                "text": lang.get("telegram.voice_response")
-                            })
-                            print(lang.get("system.prompt"), end="", flush=True)
+                            file_id = voice.get("file_id")
+                            
+                            # 1. Get file path from Telegram
+                            file_info = requests.get(f"https://api.telegram.org/bot{bot_token}/getFile", 
+                                                    params={"file_id": file_id}).json()
+                            if file_info.get("ok"):
+                                file_path = file_info["result"]["file_path"]
+                                download_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                                
+                                # 2. Download OGG to temp file
+                                import tempfile
+                                temp_ogg = os.path.join(tempfile.gettempdir(), f"tg_voice_{update['update_id']}.ogg")
+                                with open(temp_ogg, 'wb') as f:
+                                    f.write(requests.get(download_url).content)
+                                    
+                                # 3. Transcribe via audio_interface
+                                from agent_skills.audio_interface.manifest import transcribe_audio_file
+
+                                text = transcribe_audio_file(temp_ogg)
+                                
+                                # Cleanup OGG
+                                if os.path.exists(temp_ogg): os.remove(temp_ogg)
+                                
+                                if text:
+                                    print(f"[TG VOICE]: {text}")
+                                    tg_source = f"telegram:{sender_id or chat_id}"
+                                    raw_reply = axis_core.think(f"(Voice Msg): {text}", source=tg_source)
+                                    reply = _format_response(raw_reply)
+                                    
+                                    # 4. Respond with Text (Silent Mode v2.9.7)
+                                    res = requests.post(send_url, json={
+                                        "chat_id": chat_id, 
+                                        "text": reply, 
+                                        "parse_mode": "HTML"
+                                    })
+                                    if res.status_code != 200:
+                                        print(f"[TG ERROR]: {res.text}")
+                                else:
+                                    requests.post(send_url, json={"chat_id": chat_id, "text": "Не вдалося розпізнати звук."})
+                            
                             continue
                             
                         # Process text messages

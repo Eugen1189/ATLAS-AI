@@ -1,11 +1,8 @@
 import os
 import json
-from dotenv import load_dotenv
+from core.system.path_utils import load_environment, get_project_root
+load_environment()
 
-# Find .env file starting precisely from this directory, moving up
-current_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".env"))
-load_dotenv(dotenv_path=env_path)
 
 class LangModule:
     """Singleton module to handle i18n localization in AXIS."""
@@ -23,7 +20,8 @@ class LangModule:
         self.texts = {}
         
         # Determine locales folder path
-        self.locales_dir = os.path.abspath(os.path.join(current_dir, "..", "config", "locales"))
+        root = get_project_root()
+        self.locales_dir = os.path.abspath(os.path.join(root, "Atlas_v2", "config", "locales"))
         
         # Load the selected language dictionary
         file_path = os.path.join(self.locales_dir, f"{self.language}.json")
@@ -31,14 +29,15 @@ class LangModule:
             with open(file_path, "r", encoding="utf-8") as file:
                 self.texts = json.load(file)
         except Exception as e:
-            print(f"⚠️ [i18n] Failed to load locale '{self.language}' at {file_path}. Falling back to 'en'. Error: {e}")
+            print(f"[i18n] Failed to load locale '{self.language}' at {file_path}. Falling back to 'en'.")
             try:
                 # Fallback to English
                 with open(os.path.join(self.locales_dir, "en.json"), "r", encoding="utf-8") as fb_file:
                     self.texts = json.load(fb_file)
             except Exception as e2:
-                print(f"❌ [i18n] Critical error! English locale missing as well: {e2}")
+                print(f"[i18n] Critical error! English locale missing as well.")
                 self.texts = {}
+
                 
     def get(self, key: str, **kwargs) -> str:
         """

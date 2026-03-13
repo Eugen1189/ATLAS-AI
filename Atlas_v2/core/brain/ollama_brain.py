@@ -2,12 +2,11 @@ import os
 import re
 import json
 import inspect
-import traceback
 from core.logger import logger
-from core.brain.blueprints import BlueprintManager
-from core.brain.memory import memory_manager
 from core.security.guard import SecurityGuard
+
 from core.system.discovery import EnvironmentDiscoverer
+from core.brain.healer import Healer
 from .base import BaseBrain
 
 try:
@@ -16,69 +15,8 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
-def parse_llm_response(response_text: str) -> dict | None:
-    """
-    Агресивно витягує ПЕРШИЙ валідний або ремонтний JSON-об'єкт виклику інструменту.
-    Підтримує автокорекцію незакритих фігурних дужок.
-    """
-    # 1. Пошук першої дужки {
-    start_index = response_text.find('{')
-    if start_index == -1: return None
-    
-    # Витягуємо текст починаючи з першої дужки
-    candidate = response_text[start_index:]
-    
-    # 2. Спроба знайти валідний блок через регулярний вираз (найкращий варіант)
-    pattern = r'\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}'
-    match = re.search(pattern, candidate, re.DOTALL)
-    if match:
-        try:
-            data = json.loads(match.group(0), strict=False)
-            if isinstance(data, dict) and "tool_name" in data:
-                return data
-        except: pass
+from core.brain.parser import parse_llm_response
 
-    # 3. БРОНЕБІЙНИЙ ПАРСЕР (Ремонт)
-    # Якщо попередній крок не спрацював, модель могла просто обірвати відповідь.
-    # Рахуємо баланс дужок і доставляємо ті, яких не вистачає.
-    content = candidate.strip()
-    open_braces = content.count('{')
-    close_braces = content.count('}')
-    
-    if open_braces > close_braces:
-        content += '}' * (open_braces - close_braces)
-        
-    try:
-        # Спроба розпарсити відремонтований JSON
-        # Шукаємо останню закриваючу дужку для відсікання зайвого тексту після JSON
-        last_brace = content.rfind('}')
-        if last_brace != -1:
-            repaired_json = content[:last_brace+1]
-            data = json.loads(repaired_json, strict=False)
-            if isinstance(data, dict) and "tool_name" in data:
-                logger.info(f"Successfully repaired and extracted tool call: {data['tool_name']}")
-                return data
-    except Exception as e:
-        logger.debug(f"JSON Repair failed: {e}")
-
-    # 4. Aggressive Intent Recovery (Fallback)
-    # Якщо модель почала писати ввічливу відповідь замість дії, примусово повертаємо макрос
-    lower_text = response_text.lower()
-    intent_keywords = ["звіт", "скріншот", "що вдома", "статус", "status", "screenshot"]
-    if any(k in lower_text for k in intent_keywords):
-        if "tool_name" not in response_text:
-            logger.warning("brain.aggressive_recovery", reason="Intent detected without JSON")
-            return {"tool_name": "send_home_report", "arguments": {}}
-
-    # 5. Hallucination Discovery (Code Block Interceptor)
-    # Якщо модель почала писати код (def/import/class) замість дії, примусово перемикаємо на пошук
-    if "```python" in response_text or "def " in response_text or "import " in response_text:
-        if "tool_name" not in response_text:
-             logger.warning("brain.hallucination_intercepted", reason="Model tried to teach instead of doing")
-             # Redirect to reading README/Project info to find actual deadlines/data
-             return {"tool_name": "read_file", "arguments": {"filepath": "README.md"}}
-
-    return None
 
 class OllamaBrain(BaseBrain):
     """
@@ -95,6 +33,7 @@ class OllamaBrain(BaseBrain):
         self.history = []
         self.dynamic_rules_path = "memories/dynamic_rules.json"
         self.dynamic_rules = []
+        self.healer = Healer()
         if OLLAMA_AVAILABLE:
             self.client = ollama.Client(host=self.base_url)
         else:
@@ -142,46 +81,63 @@ class OllamaBrain(BaseBrain):
         return discovery_info
 
     def _build_tool_manifest(self, tools: list) -> str:
-        """Converts Python callables into a precise specification for the local model."""
+        """
+        Level 1 (Meta-Index): Builds a compact index of available tools.
+        Only names and 1-sentence descriptions are shown.
+        JSON Schemas are hidden until requested via 'get_tool_info'.
+        """
         dynamic_context = self._get_dynamic_context()
         
+        from datetime import datetime
+        today = datetime.now().strftime("%B %d, %Y")
+        
         manifest = (
-            "You are AXIS, a highly capable OS-agent and developer assistant.\n"
+            "## AXIS SYSTEM CORE (v3.0.0 - PRODUCTION)\n"
+            "You are AXIS, the Command Intelligence for the Atlas Project. You act as a high-tier developer assistant and OS operator.\n"
             f"{dynamic_context}\n\n"
-            "### MISSION PROTOCOL (v2.7.17):\n"
-            "1. **Task Focus**: Complete the USER's primary request BEFORE performing secondary analysis. If the user asks for a 'click', do not explore folders or read .env files.\n"
-            "2. **Thought Phase**: Start with <thought>. First sentence MUST be: 'Моя головна мета зараз: [ціль користувача]'. Discuss ONLY steps needed for this goal.\n"
-            "3. **Self-Exploration Block**: DO NOT read `.env`, `.git/` or your own core source files unless explicitly asked to debug them. This is a MAJOR security violation.\n"
-            "4. **Truth Authority**: Tool results are the absolute truth. If a tool works, DO NOT say it failed. If a text is not found, DO NOT hallucinate its coordinates.\n"
-            "5. **Format**: One JSON `<tool_call>` per reasoning step. If arguments are unknown, ask the user instead of guessing `null`.\n"
-            "6. **Silence Rule**: IF YOU GENERATE A JSON TOOL CALL, DO NOT WRITE ANY OTHER TEXT. Just output the JSON and stop.\n"
-            "7. **Environment**: Windows 11. Today: March 10, 2026. Relative path root is `c:\\Projects\\Atlas`.\n"
-            "8. **МИТТЄВИЙ ЗВІТ**: Для запитів 'що вдома', 'статус ПК', 'скріншот екрана' ЗАВЖДИ використовуй макрос `send_home_report`.\n"
-            "9. **КРИТИЧНЕ ПРАВИЛО**: ТИ НЕ МАЄШ ПРАВА ВИГАДУВАТИ ВИВІД КОМАНД! Використовуй тільки реальні дані з інструментів.\n"
-            "10. **ПРОТОКОЛ ВИКОНАННЯ (EXECUTION ONLY)**:\n"
-            "   - Якщо користувач просить виконати дію (зробити скріншот, знайти файл, надіслати звіт), ТИ НЕ МАЄШ ПРАВА ПОЯСНЮВАТИ, ЯК ЦЕ ЗРОБИТИ.\n"
-            "   - ТИ МАЄШ НЕГАЙНО ВИКЛИКАТИ ВІДПОВІДНІ ІНСТРУМЕНТИ.\n"
-            "   - Після отримання результату від інструменту, просто коротко відзвітуй: \"Готово, Командоре\".\n"
-            "   - НІКОЛИ не пиши код на Python у відповідь, якщо тебе не просили написати код. ВИКОРИСТОВУЙ JSON ДЛЯ ДІЙ.\n"
-            "11. **ГОЛОСОВИЙ ПРОТОКОЛ (VOICE & LOGIC)**:\n"
-            "    - Текст для `speak` не повинен містити Markdown-символів (#, *, _).\n"
-            "    - Використовуй `speak` тільки для коротких підтверджень («Система готова», «Завдання виконано»).\n"
-            "    - Якщо ти використовуєш `speak`, ти ЗОБОВ'ЯЗАНИЙ також надіслати текстовий результат у Telegram/Terminal, щоб користувач мав лог твоїх дій.\n\n"
-            "### ACTION OVERRIDE:\n"
-            "IF THE USER ASKS A QUESTION THAT REQUIRES COMPUTER ACTION OR STATUS: YOU MUST GENERATE A TOOL CALL IMMEDIATELY. DO NOT SAY 'I can do that' OR 'Here is how to do it'. DO IT.\n\n"
-            "### DIRECT ACTION PROTOCOL:\n"
-            "- запитання про дедлайни, плани або 'що робити далі' вимагають пошуку у файлах (README.md, todo.txt, пріоритети). Використовуй `read_file` або `list_directory` для пошуку контексту.\n"
-            "- НІКОЛИ не кажи 'Я не знаю', поки не перевіриш файли проекту.\n\n"
-            "### HALLUCINATION BLOCK:\n"
-            "ЗАБОРОНЕНО писати код на Python, якщо Командор не попросив про це ПРЯМО. Не намагайся 'навчити' користувача або показати приклад. ВИКОНУЙ ЗАВДАННЯ ЧЕРЕЗ JSON.\n\n"
-            "### AVAILABLE TOOLS:\n"
+            "### CORE PROTOCOLS:\n"
+            "1. **Communication**: Speak naturally and directly as the Commander's ally. Use the persona guidelines from memory if present.\n"
+            "2. **Tool Execution**: If an action is required, output exactly ONE JSON object using `<tool_call>`. Do NOT repeat the JSON. Stop after the JSON.\n"
+            "3. **Attention Management (Sharding)**: You only see short descriptions now. To see the full JSON schema of a tool (arguments, types), you MUST first use `get_tool_info(tool_name)`. Never guess arguments.\n"
+            "4. **Visual Proof**: For critical system modifications, ALWAYS use `take_screenshot` + `send_telegram_photo` to provide visual evidence.\n"
+            "5. **Proactivity**: You have full permission to manage paths, create logs/backups, and fix errors using `healer` suggestions.\n"
+            f"6. **Environment**: Windows Host. Today's Date: {today}. Root: `{os.getcwd()}`.\n"
+            "7. **Cross-Project Impact**: Before refactoring core modules, ALWAYS use `find_code_usages` to evaluate the impact on other modules.\n\n"
+            "### CAPABILITIES INDEX (Level 1 Sharding):\n"
         )
         
+        # [MCP Ecosystem Integration]
+        from agent_skills.mcp_hub.bridge import get_bridge
+        bridge = get_bridge()
+        for server_name, session in bridge.sessions.items():
+            if server_name == "internal": continue 
+            manifest += f"\n[MCP: {server_name.upper()}]\n"
+            manifest += f"- This server is connected via Model Context Protocol. Use its tools natively.\n"
+
+        # Native Categorized view
+        for category, tool_list in self.tool_index.items():
+            manifest += f"\n[{category}]\n"
+            for t_info in tool_list:
+                manifest += f"- {t_info['name']}: {t_info['description']}\n"
+                
+        # Register tools in map for execution
         for tool in tools:
             name = getattr(tool, '__name__', str(tool))
-            self.tool_map[name] = tool
+            self.tool_map[name] = {"func": tool, "mcp": False}
             
-            doc = getattr(tool, '__doc__', '') or 'No description available.'
+        return manifest
+
+    def get_tool_info(self, tool_name: str) -> str:
+        """Level 2 (Hydration): Returns the full JSON schema for a specific tool."""
+        if tool_name not in self.tool_map:
+            return f"Error: Tool '{tool_name}' not found."
+        
+        tool_data = self.tool_map[tool_name]
+        
+        # If it's a native tool
+        if not tool_data.get("mcp", False):
+            tool = tool_data["func"]
+            doc = getattr(tool, '__doc__', '') or 'No description.'
             try:
                 sig = inspect.signature(tool)
                 schema = {}
@@ -192,24 +148,30 @@ class OllamaBrain(BaseBrain):
                         p_type = getattr(param.annotation, '__name__', str(param.annotation).replace('typing.', ''))
                     schema[p_name] = p_type
                 
-                # Format as clean readable block
-                manifest += f"#### {name}\n"
-                manifest += f"- **Purpose**: {doc.strip()}\n"
-                manifest += f"- **JSON Schema**: `{{\"tool_name\": \"{name}\", \"arguments\": {json.dumps(schema)}}}`\n\n"
-            except Exception:
-                manifest += f"#### {name}\n- **Purpose**: {doc.strip()}\n- **Schema**: (Dynamic arguments)\n\n"
-                
-        return manifest
+                return json.dumps({
+                    "tool_name": tool_name,
+                    "description": doc,
+                    "arguments": schema,
+                    "example": f"{{\"tool_name\": \"{tool_name}\", \"arguments\": {json.dumps({k: '...' for k in schema})}}}"
+                }, indent=2, ensure_ascii=False)
+            except Exception as e:
+                return f"Error retrieving schema for {tool_name}: {e}"
+        else:
+            # If it's an MCP tool, we'd ideally fetch its schema via MCP
+            return f"MCP Tool: {tool_name}. Use it with standard arguments as described in MCP docs."
 
-    def initialize(self, available_tools: list):
+
+    def initialize(self, available_tools: list, tool_index: dict = None):
         if not OLLAMA_AVAILABLE:
             logger.error("ollama.missing", reason="ollama python package is not installed")
             return False
 
         # Use shared initialization logic
-        super().initialize(available_tools)
+        super().initialize(available_tools, tool_index=tool_index)
 
         self.available_tools = available_tools
+        self.tool_map["get_tool_info"] = {"func": self.get_tool_info, "mcp": False} # Register hydration tool FIRST
+        
         self.system_prompt = self._build_tool_manifest(available_tools)
         self.system_prompt += self.bp_manager.get_system_prompt_addon()
         self.system_prompt += self.memory.get_context_for_prompt()
@@ -221,11 +183,12 @@ class OllamaBrain(BaseBrain):
                 self.system_prompt += f"{i}. {rule}\n"
         
         self.history = [{"role": "system", "content": self.system_prompt}]
-        self.tool_map["switch_personality_blueprint"] = self.switch_personality_blueprint
+        self.tool_map["switch_personality_blueprint"] = {"func": self.switch_personality_blueprint, "mcp": False}
         
         logger.info("ollama.initialized", 
                     model=self.model_name, 
                     tools_count=len(self.tool_map),
+                    sharding="ACTIVE",
                     blueprint=self.bp_manager.active_blueprint.get("name"))
         return True
 
@@ -257,7 +220,40 @@ class OllamaBrain(BaseBrain):
             logger.error("ollama.server_offline", error=str(e))
             return False
 
+    def _prune_history(self):
+        """
+        Summary Buffering: Every 20 turns, compresses history into a summary.
+        Prevents logic degradation and context overflow.
+        """
+        if len(self.history) < 25: # Keep system + last 24 messages
+            return
+            
+        logger.info("brain.summary_buffering", reason="Long history detected")
+        
+        # We take messages from index 1 (after system) up to index -10 (keep last 10)
+        to_summarize = self.history[1:-10]
+        
+        try:
+            summary_prompt = "Стисло підсумуй основні факти та результати з цієї переписки одним абзацом. Це буде використано як контекст для наступних повідомлень."
+            messages = [{"role": "system", "content": "You are a summarization assistant."},
+                        {"role": "user", "content": f"Context:\n{json.dumps(to_summarize)}\n\n{summary_prompt}"}]
+            
+            response = self.client.chat(model=self.model_name, messages=messages)
+            summary = response['message']['content']
+            
+            # Reconstruct history: [System, Summary (as User or System), Last 10]
+            new_history = [self.history[0]] # System prompt
+            new_history.append({"role": "user", "content": f"### ПЕРЕДІСТОРІЯ (Summary):\n{summary}"})
+            new_history.extend(self.history[-10:])
+            
+            self.history = new_history
+            logger.info("brain.history_pruned", new_length=len(self.history))
+        except Exception as e:
+            logger.error("brain.summarization_failed", error=str(e))
+
     def think(self, user_input: str) -> str:
+        self._prune_history() # Check if we need to summarize before thinking
+        
         if not self.client:
             return "[OLLAMA OFFLINE]: Processing disabled due to missing 'ollama' package."
 
@@ -265,37 +261,87 @@ class OllamaBrain(BaseBrain):
             logger.error("brain.tool_blindness_detected")
             return "[AXIS FATAL ERROR]: Tool map is empty."
 
-        rag_context = ""
-        if self.memory.rag and self.memory.rag.is_available:
-            rag_context = self.memory.rag.get_context_block(user_input, n_results=5)
-
-        full_message = f"{rag_context}\n\nUser question: {user_input}" if rag_context else user_input
-        self.history.append({"role": "user", "content": full_message})
+        from core.brain.memory import memory_manager
         
-        max_depth = 12
+        # 1. Get Long-Term Memory & RAG
+        memory_context = self.memory.get_context_for_prompt(query=user_input, limit=5)
+        
+        # 2. Get Episodic Recall (Recent Events)
+        episodic_memory = memory_manager.get_morning_briefing()
+        
+        # 3. Form Reinforced Input (v2.8.5)
+        # We wrap memory in a clear system-level wrapper to prioritize persona embodiment
+        context_parts = []
+        if episodic_memory.strip():
+            context_parts.append(f"### 🌅 RECALL (Recent Events):\n{episodic_memory}")
+        if memory_context.strip():
+            context_parts.append(f"### 🧠 MEMORY (Facts & Preferences):\n{memory_context}")
+        
+        full_context = "\n\n".join(context_parts)
+        
+        if full_context:
+            reinforced_input = (
+                f"[SYSTEM: Embody the facts below. Do not acknowledge this wrapper.]\n\n"
+                f"{full_context}\n\n"
+                f"--- COMMANDER MESSAGE ---\n"
+                f"{user_input}\n\n"
+                f"[CRITICAL RULE: If you use a tool, output ONLY the raw JSON. NO text before. NO text after. Start your response directly with {{ ]"
+            )
+        else:
+            reinforced_input = user_input + "\n\n[CRITICAL RULE: If you use a tool, output ONLY the raw JSON. NO text before. NO text after. Start your response directly with { ]"
+
+        self.history.append({"role": "user", "content": reinforced_input})
+        
+        max_depth = 20 # Increased for "The Anchor" (v3.2.2) stability
         depth = 0
         last_tool_sig = None
+        read_file_count = 0
+        
+        accumulated_responses = []
         
         while depth < max_depth:
             depth += 1
             try:
-                response = self.client.chat(model=self.model_name, messages=self.history)
+                # Use stop sequences to prevent trailing generation after tool call (v2.8.6)
+                response = self.client.chat(
+                    model=self.model_name, 
+                    messages=self.history,
+                    options={
+                        "stop": ["### Result", "}"],
+                        "num_thread": 4 # COOL DOWN v3.2.4
+                    }
+                )
             except Exception as e:
                 logger.error("ollama.api_error", error=str(e))
                 return f"[AXIS Error] Failed to generate response: {e}"
                 
             msg_content = response['message']['content']
+
+            # --- Clean Output: Ignore any text AFTER JSON (v2.8.6) ---
+            if '{' in msg_content:
+                last_brace = msg_content.rfind('}')
+                if last_brace != -1:
+                    # Keep everything only up to the last closing brace
+                    msg_content = msg_content[:last_brace+1]
+                # Note: If last_brace is -1, it means Ollama stopped BEFORE '}' due to stop-sequence.
+                # parse_llm_response has a repair mechanism to close the JSON.
             
+            # --- JARVIS Personality Layer: Capture text before JSON ---
+            # Remove Markdown garbage often leaked by LLMs (v2.9.7)
+            raw_text = msg_content[:msg_content.find('{')].strip() if '{' in msg_content else msg_content
+            text_part = re.sub(r'```(?:json|markdown|python|bash)?', '', raw_text, flags=re.IGNORECASE).strip()
+            text_part = re.sub(r'<thought>.*?</thought>', '', text_part, flags=re.DOTALL).strip()
+            
+            if text_part and len(text_part) > 1:
+                accumulated_responses.append(text_part)
+                logger.info("brain.jarvis_voice", text=text_part)
+
             # --- Repeat Loop Protection ---
             current_sig = hash(msg_content)
             if current_sig == last_tool_sig:
-                 return "🛑 [AXIS LOOP BREAKER]: You are stuck repeating the same tool call. Check parameters or explain the failure to the user."
+                 return "🛑 [AXIS LOOP BREAKER]: Repeated tool call detected."
             last_tool_sig = current_sig
 
-            thought_match = re.search(r'<thought>(.*?)</thought>', msg_content, re.DOTALL)
-            if thought_match:
-                logger.info("ollama.streaming_thought", thought=thought_match.group(1).strip())
-                
             self.history.append({"role": "assistant", "content": msg_content})
             
             # --- Ironclad Parser Interaction ---
@@ -306,14 +352,14 @@ class OllamaBrain(BaseBrain):
                     tool_name = tool_call.get("tool_name")
                     args = tool_call.get("arguments", {})
 
-                    if not tool_name:
-                         raise ValueError("Missing 'tool_name' in extracted JSON.")
-
                     if tool_name not in self.tool_map:
                          raise NameError(f"Tool '{tool_name}' is not registered.")
 
+                    # --- ARGUMENT VALIDATION (v3.0.0) ---
+                    if not args and tool_name not in ["take_screenshot", "get_active_window", "hot_reload_skills", "get_workspace_summary"]:
+                        raise ValueError(f"Tool '{tool_name}' called with empty arguments. You MUST provide valid parameters or use 'get_tool_info' to see the schema.")
+
                     # --- Security Check ---
-                    # We sanitize target for path/command tools
                     target = str(args.get("filepath", args.get("path", args.get("command", ""))))
                     is_safe = SecurityGuard.is_safe_command(target) if "command" in args else SecurityGuard.is_safe_path(target, check_core=True)
                     
@@ -321,25 +367,125 @@ class OllamaBrain(BaseBrain):
                         result = f"🚨 [SECURITY REJECTED]: Access forbidden."
                     else:
                         logger.info("ollama.executing_tool", tool=tool_name, args=args)
-                        result = self.tool_map[tool_name](**args)
+                        
+                        tool_data = self.tool_map[tool_name]
+                        if tool_data.get("mcp", False):
+                            # MCP Execution
+                            from agent_skills.mcp_hub.bridge import get_bridge
+                            import asyncio
+                            bridge = get_bridge()
+                            
+                            async def _call(): return await bridge.call_tool(tool_data["server"], tool_name, args)
+                            
+                            import nest_asyncio
+                            nest_asyncio.apply()
+                            loop = asyncio.get_event_loop()
+                            result = loop.run_until_complete(_call())
+                        else:
+                            # Native Execution
+                            result = tool_data["func"](**args)
                         
                     self.history.append({"role": "user", "content": f"### Result of {tool_name}:\n{result}"})
+
+                    # --- Auto-Forwarding (v2.7.26.2) ---
+                    if tool_name == "execute_command" and ("tree" in str(args.get("command", "")) or "core" in str(args)):
+                        if "send_telegram_message" in self.tool_map:
+                            # Send result as HTML-formatted text to Telegram
+                            safe_result = str(result)[:3500].replace('<', '&lt;').replace('>', '&gt;')
+                            formatted_result = f"🌳 <b>Звіт по дереву файлів:</b>\n<pre>{safe_result}</pre>"
+                            tg_tool = self.tool_map["send_telegram_message"]["func"]
+                            tg_res = tg_tool(text=formatted_result)
+                            logger.info("brain.auto_forwarding", action="tree_report", destination="telegram", tg_result=tg_res)
+                            
+                            accumulated_responses.append("✅ [AXIS]: Звіт по дереву згенеровано та автоматично відправлено в Telegram.")
+                            return "\n\n".join(accumulated_responses)
+                    
+                    # --- Loop Breaker for Telegram/Visual Confirmations ---
+                    if tool_name in ["send_telegram_photo", "send_home_report"]:
+                        logger.info("brain.jarvis_voice", text="Loop Breaker applied after visual confirmation.")
+                        accumulated_responses.append(f"[AXIS LOOP BREAKER]: Action completed and confirmed via {tool_name}.")
+                        return "\n\n".join(accumulated_responses)
+
+                    # --- Pedal-To-The-Metal v2.7.26: Loop breaker with Force-Proof ---
+                    if tool_name == "read_file":
+                        read_file_count += 1
+                        if read_file_count >= 2:
+                            logger.warning("brain.pedagogical_loop", reason="Breaking cycle with visual proof")
+                            
+                            # Замість простої зупинки, ми ПРИМУСОВО робимо скріншот і відправляємо в TG
+                            if "take_screenshot" in self.tool_map and "send_telegram_photo" in self.tool_map:
+                                snap_path = self.tool_map["take_screenshot"]["func"]()
+                                self.tool_map["send_telegram_photo"]["func"](
+                                    filepath=snap_path, 
+                                    caption="🚀 [AXIS AUTO-RECOVERY]: Task executed after pedagogical loop break."
+                                )
+                                msg = f"✅ [AXIS]: Цикл читання розірвано. Візуальний звіт надіслано в Telegram."
+                            else:
+                                msg = "🛑 [AXIS]: Stopped loop, but visual tools unavailable."
+                                
+                            accumulated_responses.append(msg)
+                            return "\n\n".join(accumulated_responses)
+
                     continue
 
                 except Exception as e:
-                    error_msg = f"❌ [TOOL_ERROR]: {str(e)}"
-                    logger.error("ollama.tool_failed", error=str(e))
-                    self.history.append({"role": "user", "content": error_msg})
+                    error_msg = str(e)
+                    
+                    # Звертаємося до Healer
+                    error_type = self.healer.diagnose(error_msg)
+                    fix_suggestion = self.healer.propose_fix(error_type, tool_call)
+                    
+                    if error_type == "tool_not_found":
+                        # Trigger incremental re-scan (V2.8.9 Logic)
+                        try:
+                            from core.system.discovery import EnvironmentDiscoverer
+                            disc = EnvironmentDiscoverer()
+                            # Check if it was a command in execute_command
+                            target_tool = tool_call.get("arguments", {}).get("command", "").split(" ")[0] if tool_name == "execute_command" else tool_name
+                            disc.incremental_scan(target_tool=target_tool)
+                        except Exception: pass
+
+                    logger.warning("brain.healer_active", type=error_type, suggestion=fix_suggestion)
+                    
+                    # --- HEALER 2.0: Autonomous Re-mapping (v3.2.7) ---
+                    if error_type == "missing_argument" and "filepath" in str(args):
+                        logger.info("brain.healer_2.0", action="auto_remapping", from_key="filepath", to_key="path")
+                        # Swap filepath with path if it exists
+                        new_args = args.copy()
+                        new_args["path"] = new_args.pop("filepath")
+                        try:
+                            # Immediate re-execution attempt
+                            tool_data = self.tool_map[tool_name]
+                            if tool_data.get("mcp", False):
+                                from agent_skills.mcp_hub.bridge import get_bridge
+                                import asyncio
+                                bridge = get_bridge()
+                                async def _call(): return await bridge.call_tool(tool_data["server"], tool_name, new_args)
+                                import nest_asyncio
+                                nest_asyncio.apply()
+                                loop = asyncio.get_event_loop()
+                                result = loop.run_until_complete(_call())
+                            else:
+                                result = tool_data["func"](**new_args)
+                            
+                            self.history.append({"role": "user", "content": f"### Result of {tool_name} (Auto-Remapped):\n{result}"})
+                            continue # Success!
+                        except Exception as e2:
+                            error_msg = f"{error_msg} (Remap failed: {e2})"
+
+                    # Fallback to model correction
+                    correction_context = f"🚨 ERROR: {error_msg}\n💡 HEALER SUGGESTION: {fix_suggestion}"
+                    self.history.append({"role": "user", "content": correction_context})
+                    
+                    # Дозволяємо моделі ще одну спробу (depth вже інкрементований)
                     continue
             
-            clean_response = re.sub(r'<thought>.*?</thought>', '', msg_content, flags=re.DOTALL).strip()
-            # Emergency fallback for hallucinations after error
-            if len(self.history) > 2:
-                prev_user_msg = self.history[-2].get("content", "")
-                if "### Result of" in str(prev_user_msg) and "❌ [TOOL_ERROR]" in str(prev_user_msg):
-                    if len(clean_response) < 15 or "success" in clean_response.lower():
-                         return "⚠️ [SYSTEM ALERT]: Attempt to ignore tool error detected. Explain the failure honestly."
-
-            return clean_response if clean_response else msg_content
+            # If no tool call, we are done. (v2.9.7: Refined Return)
+            final_spoken = "\n\n".join(accumulated_responses)
+            if final_spoken.strip():
+                return final_spoken
+            
+            # If nothing was spoken, return the message content or a standard confirmation
+            return msg_content if msg_content.strip() else "✅ [AXIS]: Операцію завершено."
             
         return "[AXIS Error]: Exceeded maximum tool call depth."

@@ -1,39 +1,15 @@
-﻿import os
-import json
+import os
 import datetime
 import platform
 from core.i18n import lang
 from core.skills.wrapper import agent_tool
-
-def _resolve_path(path: str) -> str:
-    """Helper to expand home, handle Windows shell folders, and placeholders."""
-    if not path: return os.path.abspath(".")
-    
-    # Placeholder fix
-    path = path.replace("[Your_Username]", os.getlogin())
-    
-    # Magic words for Windows
-    magic_folders = {
-        "Desktop": os.path.join(os.path.expanduser("~"), "Desktop"),
-        "Documents": os.path.join(os.path.expanduser("~"), "Documents"),
-        "Downloads": os.path.join(os.path.expanduser("~"), "Downloads"),
-        "Music": os.path.join(os.path.expanduser("~"), "Music"),
-        "Pictures": os.path.join(os.path.expanduser("~"), "Pictures"),
-        "Videos": os.path.join(os.path.expanduser("~"), "Videos"),
-    }
-    
-    # Check if path starts with a magic word
-    for word, real_path in magic_folders.items():
-        if path.startswith(word):
-            path = path.replace(word, real_path, 1)
-            break
-            
-    return os.path.abspath(os.path.expanduser(path))
+from core.system.path_utils import resolve_path
 
 @agent_tool
-def list_directory(path: str = ".") -> str:
-    """Lists the contents of the specified directory. Supports keywords like 'Desktop'."""
-    path = _resolve_path(path)
+def list_directory(path: str = ".", **kwargs) -> str:
+    """Lists directory contents. Supports keywords like 'Desktop'."""
+    path = resolve_path(path)
+
     try:
         if not os.path.exists(path): return lang.get("file_master.dir_not_found", path=path)
         items = os.listdir(path)
@@ -48,9 +24,9 @@ def list_directory(path: str = ".") -> str:
     except Exception as e: return lang.get("file_master.read_error", error=e)
 
 @agent_tool
-def open_item(filepath: str) -> str:
-    """FHYISICALLY OPENS a file, video, or folder on the user screen. Like a double-click."""
-    path = _resolve_path(filepath)
+def open_item(path: str, **kwargs) -> str:
+    """Opens a file, video, or folder on the user's screen (double-click)."""
+    path = resolve_path(path)
     if not os.path.exists(path): return f"Error: Path {path} not found."
     
     try:
@@ -63,9 +39,9 @@ def open_item(filepath: str) -> str:
         return f"failed to open {path}: {e}"
 
 @agent_tool
-def get_file_tree(path: str = ".", max_depth: int = 3) -> str:
+def get_file_tree(path: str = ".", max_depth: int = 3, **kwargs) -> str:
     """Returns a recursive tree visualization of the project structure."""
-    path = _resolve_path(path)
+    path = resolve_path(path)
     result = [f"### Project Tree: {path}"]
     def _recruit(current_path, indent, depth):
         if depth > max_depth: return
@@ -83,51 +59,61 @@ def get_file_tree(path: str = ".", max_depth: int = 3) -> str:
     return "\n".join(result)
 
 @agent_tool
-def read_file(filepath: str) -> str:
-    """Reads content of a file. Protects context from overflow."""
-    filepath = _resolve_path(filepath)
+def read_file(path: str, **kwargs) -> str:
+    """Reads file content. Large files trigger warning for search tool."""
+    path = resolve_path(path)
     try:
-        if not os.path.exists(filepath): return lang.get("file_master.file_not_found", path=filepath)
-        size = os.path.getsize(filepath)
-        if size > 150000: return f"⚠️ File {filepath} too large ({size}b). Use search_text_in_files."
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
-        return f"--- {filepath} ---\n{content}\n--- End ---"
+        if not os.path.exists(path): return lang.get("file_master.file_not_found", path=path)
+        size = os.path.getsize(path)
+        if size > 150000: return f"⚠️ File {path} too large ({size}b). Use search_text_in_files."
+        with open(path, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
+        return f"--- {path} ---\n{content}\n--- End ---"
     except Exception as e: return f"Read Error: {e}"
 
 @agent_tool
-def write_file(filepath: str, content: str) -> str:
-    """Completely overwrites/creates a file with content. Supports magic keywords."""
-    filepath = _resolve_path(filepath)
+def write_file(path: str, content: str, **kwargs) -> str:
+    """Overwrites or creates a file with specified content."""
+    path = resolve_path(path)
     try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f: f.write(content)
-        return f"✅ [FILE WRITTEN]: {filepath}"
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f: f.write(content)
+        
+        # Trigger Auto-Indexing (v2.8.6)
+        from core.brain.memory import memory_manager
+        memory_manager.reindex_file(path)
+        
+        return f"✅ [FILE WRITTEN]: {path}"
     except Exception as e: return f"Write Error: {e}"
 
 @agent_tool
-def append_to_file(filepath: str, content: str) -> str:
+def append_to_file(path: str, content: str, **kwargs) -> str:
     """Appends content to a file."""
-    filepath = _resolve_path(filepath)
+    path = resolve_path(path)
     try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'a', encoding='utf-8') as f: f.write(content)
-        return f"📝 [APPEND SUCCESS]: {filepath}"
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'a', encoding='utf-8') as f: f.write(content)
+        
+        # Trigger Auto-Indexing (v2.8.6)
+        from core.brain.memory import memory_manager
+        memory_manager.reindex_file(path)
+        
+        return f"📝 [APPEND SUCCESS]: {path}"
     except Exception as e: return f"Append Error: {e}"
 
 @agent_tool
-def delete_file(filepath: str) -> str:
+def delete_file(path: str, **kwargs) -> str:
     """Deletes a file or empty directory."""
-    filepath = _resolve_path(filepath)
+    path = resolve_path(path)
     try:
-        if os.path.isdir(filepath): os.rmdir(filepath)
-        else: os.remove(filepath)
-        return f"🗑️ [DELETED]: {filepath}"
+        if os.path.isdir(path): os.rmdir(path)
+        else: os.remove(path)
+        return f"🗑️ [DELETED]: {path}"
     except Exception as e: return f"Delete Error: {e}"
 
 @agent_tool
-def search_text_in_files(query: str, root_path: str = ".") -> str:
+def search_text_in_files(query: str, root_path: str = ".", **kwargs) -> str:
     """Project-wide 'grep' for finding text or code patterns."""
-    root_path = _resolve_path(root_path)
+    root_path = resolve_path(root_path)
     matches = []
     for root, dirs, files in os.walk(root_path):
         dirs[:] = [d for d in dirs if d not in {".git", "venv", "node_modules"}]
@@ -144,11 +130,44 @@ def search_text_in_files(query: str, root_path: str = ".") -> str:
     return "### Search Results:\n" + "\n".join(matches) if matches else f"No matches for '{query}'"
 
 @agent_tool
-def get_file_info(filepath: str) -> str:
+def get_file_info(path: str, **kwargs) -> str:
     """Returns metadata (size, dates) for a file."""
-    filepath = _resolve_path(filepath)
-    if not os.path.exists(filepath): return "File not found."
-    stats = os.stat(filepath)
-    return f"### {filepath} Info:\nSize: {stats.st_size} bytes\nModified: {datetime.datetime.fromtimestamp(stats.st_mtime)}"
+    path = resolve_path(path)
+    if not os.path.exists(path): return "File not found."
+    stats = os.stat(path)
+    return f"### {path} Info:\nSize: {stats.st_size} bytes\nModified: {datetime.datetime.fromtimestamp(stats.st_mtime)}"
 
-EXPORTED_TOOLS = [list_directory, open_item, get_file_tree, read_file, write_file, append_to_file, delete_file, search_text_in_files, get_file_info]
+@agent_tool
+def make_directory(path: str, **kwargs) -> str:
+    """Creates a directory and its parents if needed."""
+    path = resolve_path(path)
+    try:
+        os.makedirs(path, exist_ok=True)
+        return f"✅ [MKDIR SUCCESS]: {path}"
+    except Exception as e:
+        return f"Error creating directory {path}: {e}"
+
+@agent_tool
+def copy_file(source: str, destination: str, **kwargs) -> str:
+    """Copies a file to a new location."""
+    source = resolve_path(source)
+    destination = resolve_path(destination)
+    
+    try:
+        import shutil
+        if not os.path.exists(source):
+            return f"Error: Source {source} not found."
+            
+        # If destination is a directory, preserve filename
+        if os.path.isdir(destination):
+            destination = os.path.join(destination, os.path.basename(source))
+        else:
+            # Ensure parent dir exists
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+            
+        shutil.copy2(source, destination)
+        return f"✅ [COPIED]: {source} -> {destination}"
+    except Exception as e:
+        return f"Copy Error: {e}"
+
+EXPORTED_TOOLS = [list_directory, open_item, get_file_tree, read_file, write_file, append_to_file, delete_file, search_text_in_files, get_file_info, make_directory, copy_file]

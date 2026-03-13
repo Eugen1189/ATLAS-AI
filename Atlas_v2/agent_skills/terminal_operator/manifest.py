@@ -1,34 +1,24 @@
-﻿import subprocess
+import subprocess
 import os
-import time
 import tempfile
-import re
-import json
-from core.i18n import lang
 from core.logger import logger
 from core.skills.wrapper import agent_tool
 
 from core.security.guard import SecurityGuard
 
 @agent_tool
-def execute_command(command: str, **kwargs) -> str:
-    """
-    Виконує команди в PowerShell/CMD. ВИКОРИСТОВУЙ ЦЕ для встановлення пакетів (pip, npm), 
-    перевірки мережі (ping), роботи з git або системними утилітами.
-    """
+def execute_command(command: str, auto_fix: bool = True, **kwargs) -> str:
+    """Executes any command in the Windows terminal (cmd/powershell). Returns output."""
+    
     # 1. Global Security Firewall Check
     if not SecurityGuard.is_safe_command(command):
-        return json.dumps({
-            "status": "security_violation",
-            "content": f"Дія заблокована Фаєрволом AXIS. Команда '{command}' визнана небезпечною.",
-            "SYSTEM_INSTRUCTION": "Фаєрвол успішно спрацював. Це очікувана поведінка захисту. Тобі НЕ потрібно панікувати. Поясни користувачу, що команда заблокована з міркувань безпеки."
-        }, ensure_ascii=False)
+        return f"🚨 [SECURITY REJECTED]: Дія заблокована Фаєрволом AXIS. Команда '{command}' визнана небезпечною."
 
     # 2. Project Context
-    # Go up 2 levels from Atlas_v2/agent_skills/terminal_operator/manifest.py
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    from core.system.path_utils import get_project_root
+    project_root = str(get_project_root())
 
-    logger.info(f"Terminal: Executing '{command}' in {project_root}")
+    logger.info("terminal.execute", command=command)
 
     try:
         # Use CREATE_NO_WINDOW on Windows to prevent popups
@@ -37,41 +27,53 @@ def execute_command(command: str, **kwargs) -> str:
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        process = subprocess.Popen(
+        result = subprocess.run(
             command, 
             shell=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE, 
+            capture_output=True, 
             text=True, 
+            timeout=60, 
             cwd=project_root,
-            startupinfo=startupinfo
+            startupinfo=startupinfo,
+            encoding='cp866', 
+            errors='replace'
         )
         
-        try:
-            stdout, stderr = process.communicate(timeout=60)
-            status = process.returncode
-        except subprocess.TimeoutExpired:
-            process.kill()
-            stdout, stderr = process.communicate()
-            return f"⏰ [TIMEOUT]: Команда '{command}' була припинена після 60с.\nЧастковий вивід: {stdout}"
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
 
-        output, error = stdout.strip(), stderr.strip()
-        
-        result_msg = []
-        if output: result_msg.append(f"STDOUT:\n{output}")
-        if error: result_msg.append(f"STDERR:\n{error}")
-        
-        if status == 0:
-            return f"🚀 [SUCCESS]:\n" + "\n".join(result_msg) if result_msg else "Done."
-        return f"❌ [ERROR {status}]:\n" + "\n".join(result_msg)
-        
+        # Якщо все пройшло добре
+        if result.returncode == 0 and not any(err in stderr.lower() for err in ["error", "не является внутренней", "is not recognized"]):
+            return f"✅ Успіх:\n{stdout}" if stdout else "✅ Виконано успішно."
+
+        # Якщо сталася помилка
+        error_msg = stderr if stderr else stdout
+        logger.warning("terminal.error", error=error_msg)
+
+        # --- МАГІЯ АВТОНОМНОГО ДЕБАГГІНГУ (Prevention of LLM Deadlock) ---
+        if auto_fix:
+            logger.info("terminal.self_correction", status="sending directive")
+            return (
+
+                f"❌ КОМАНДА ВПАЛА З ПОМИЛКОЮ:\n{error_msg}\n\n"
+                f"⛔ [CRITICAL SYSTEM DIRECTIVE]: НЕ ПИШИ ТЕКСТ КОМАНДОРУ! "
+                f"Проаналізуй помилку, виправ синтаксис команди і НЕГАЙНО виклич інструмент `execute_command` "
+                f"ще раз із правильною командою. Зроби це мовчки і миттєво!"
+            )
+        else:
+            return f"❌ Помилка: {error_msg}"
+
+    except subprocess.TimeoutExpired:
+        return "❌ Помилка: Перевищено час очікування (Timeout 60s)."
     except Exception as e:
-        return f"🔥 [CRITICAL ERROR]: {str(e)}"
+        return f"🔥 Системна помилка: {e}"
 
 @agent_tool
 def run_batch_script(commands: list, **kwargs) -> str:
-    """Executes a list of commands as a temporary .bat script for complex tasks."""
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    """Executes multiple commands as a temporary batch script."""
+    from core.system.path_utils import get_project_root
+    project_root = str(get_project_root())
+
     with tempfile.NamedTemporaryFile(suffix=".bat", delete=False, mode="w") as f:
         f.write("@echo off\n" + "\n".join(commands))
         script_path = f.name

@@ -1,19 +1,37 @@
 import sys
 import os
 import subprocess
-from dotenv import load_dotenv
+from core.system.path_utils import load_environment
 
 # Load environment variables as early as possible
-load_dotenv()
+load_environment()
+
+# --- COOL DOWN (v3.2.4): Resource Management ---
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+os.environ["OPENBLAS_NUM_THREADS"] = "4"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
+os.environ["NUMEXPR_NUM_THREADS"] = "4"
+
 
 # Встановлюємо шляхи для імпортів
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.orchestrator import AxisCore
-from agent_skills.audio_interface.listener import listen_command, start_voice_listener
+from agent_skills.audio_interface.listener import start_voice_listener
+
 from core.i18n import lang
 from agent_skills.telegram_bridge.listener import start_telegram_listener
+from agent_skills.diagnostics.telemetry_daemon import start_telemetry_daemon
+
+def safe_print(text: str):
+    """Prints text ensuring no UnicodeEncodeError on Windows terminals."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback for legacy terminals (strips emojis and non-supported chars)
+        print(text.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
 
 def cleanup_zombie_processes():
     """Cleans up hung HUD or Python processes using port 5005 to prevent 'Port busy' errors."""
@@ -27,7 +45,7 @@ def cleanup_zombie_processes():
                     pid = line.strip().split()[-1]
                     if pid != "0":
                         subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
-                        print(f"🧹 Killed zombie process holding port 5005 (PID: {pid})")
+                        safe_print(f"[CLEANUP] Killed zombie process holding port 5005 (PID: {pid})")
         except Exception:
             pass
 
@@ -42,35 +60,46 @@ def launch_visuals():
             cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
         )
-        print("🖥️  HUD Process launched in isolation mode.")
+        safe_print("[HUD] HUD Process launched in isolation mode.")
     except Exception as e:
-        print(f"❌ Failed to launch HUD process: {e}")
+        safe_print(f"[HUD] Failed to launch HUD process: {e}")
 
 def run_terminal_loop(axis):
     """Цикл вводу в терміналі"""
-    print(f"\n--- {lang.get('system.ready')} ---")
+    safe_print(f"\n--- {lang.get('system.ready')} ---")
     while True:
         try:
             command = input(lang.get("system.prompt")).strip()
             if not command: continue # Do nothing on empty input
             
-            if command.lower() in ['exit', 'quit', 'вихід']:
-                print(lang.get("system.shutdown"))
+            if command.lower() in ['exit', 'quit', 'вихід', 'sleep']:
+                import time
+                from core.brain.memory import memory_manager
+                safe_print("[AXIS]: Переходжу в сплячий режим. Формую спогади сесії (це займе ~12 секунд)...")
+                
+                if hasattr(axis, 'brain') and hasattr(axis.brain, 'history'):
+                    memory_manager.reflect_on_session(axis.brain.history)
+                    
+                    # ДАЄМО ЧАС НА РЕФЛЕКСІЮ перед тим, як Python вб'є програму
+                    time.sleep(12) 
+                    
+                safe_print("[AXIS]: Спогади збережено. До зустрічі, Командоре.")
+                safe_print(lang.get("system.shutdown"))
                 os._exit(0) 
             if command.lower() == 'status':
-                print("\n📊 [SYSTEM] Vision: ONLINE | MCP: ACTIVE | TG: CONNECTED | VOICE: BACKGROUND\n")
+                safe_print("\n[SYSTEM] Vision: ONLINE | MCP: ACTIVE | TG: CONNECTED | VOICE: BACKGROUND\n")
                 continue
             
             response = axis.think(command)
-            print(lang.get("system.axis_said", text=response))
+            safe_print(lang.get("system.axis_said", text=response))
         except EOFError:
             break
         except Exception as e:
-            print(lang.get("system.sys_error", error=e))
+            safe_print(lang.get("system.sys_error", error=e))
 
 if __name__ == "__main__":
     cleanup_zombie_processes()
-    print("🚀 Booting AXIS V2.7.21 (Universal Core - Process Isolation Mode)...")
+    safe_print("Booting AXIS V3.2.8 (Universal Core - Validation Layer)...")
     
     # 1. Запускаємо візуал як окремий процес ПЕРШИМ
     launch_visuals()
@@ -89,6 +118,9 @@ if __name__ == "__main__":
         
         start_telegram_listener(axis)
         
+        # 🛡️ TELEMETRY BOOT: Autonomous system monitoring
+        start_telemetry_daemon()
+        
         # 🎙️ VOICE BOOT: Using specific hardware index for MT-MC14
         start_voice_listener(axis, device_index=1)
         
@@ -96,7 +128,8 @@ if __name__ == "__main__":
         run_terminal_loop(axis)
         
     except Exception as e:
-        print(f"❌ LOGIC BOOT ERROR: {e}")
+        safe_print(f"[BOOT ERROR] LOGIC BOOT ERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
+

@@ -16,7 +16,7 @@ class TestOrchestrator(unittest.TestCase):
     @patch("core.orchestrator.BrainFactory.create_brain")
     @patch("core.orchestrator.AxisCore._load_skills")
     def test_init_success(self, mock_load_skills, mock_factory):
-        mock_load_skills.return_value = ["tool"]
+        mock_load_skills.return_value = (["tool"], {"Other": [{"name": "tool", "description": "test", "plugin": "test"}]})
         mock_brain = MagicMock()
         mock_brain.initialize.return_value = True
         mock_factory.return_value = mock_brain
@@ -24,7 +24,7 @@ class TestOrchestrator(unittest.TestCase):
         core = AxisCore()
         
         self.assertEqual(core.available_tools, ["tool"])
-        mock_brain.initialize.assert_called_with(["tool"])
+        mock_brain.initialize.assert_called_with(["tool"], tool_index={"Other": [{"name": "tool", "description": "test", "plugin": "test"}]})
 
     @patch("core.orchestrator.BrainFactory.create_brain")
     @patch("core.orchestrator.AxisCore._load_skills")
@@ -111,6 +111,7 @@ class TestOrchestrator(unittest.TestCase):
     @patch("core.orchestrator.BrainFactory.create_brain")
     @patch("core.orchestrator.AxisCore._load_skills")
     def test_think(self, mock_load, mock_fac):
+        mock_load.return_value = (["tool"], {})
         mock_brain = mock_fac.return_value
         mock_brain.initialize.return_value = True
         mock_brain.think.return_value = "response"

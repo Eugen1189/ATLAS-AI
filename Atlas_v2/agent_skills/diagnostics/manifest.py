@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import subprocess
 import platform
@@ -48,21 +48,14 @@ def deep_system_scan(**kwargs):
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage(os.path.abspath(os.sep))
     
-    scan_report = {
-        "os_system": os_system,
-        "os_release": os_release,
-        "cpu_processor": uname.processor,
-        "cpu_cores_logical": psutil.cpu_count(logical=True),
-        "cpu_usage_percent": psutil.cpu_percent(interval=0.5),
-        "ram_total_gb": round(memory.total / (1024**3), 2),
-        "ram_used_gb": round(memory.used / (1024**3), 2),
-        "ram_percent": memory.percent,
-        "disk_total_gb": round(disk.total / (1024**3), 2),
-        "disk_free_gb": round(disk.free / (1024**3), 2),
-        "disk_percent": disk.percent
-    }
+    report = (
+        f"🖥️ OS: {os_system} {os_release}\n"
+        f"💾 RAM: {round(memory.used / (1024**3), 2)}/{round(memory.total / (1024**3), 2)} GB ({memory.percent}%)\n"
+        f"💽 Disk: {round(disk.free / (1024**3), 2)}/{round(disk.total / (1024**3), 2)} GB free ({disk.percent}%)\n"
+        f"⚡ CPU: {psutil.cpu_percent(interval=0.5)}% ({psutil.cpu_count(logical=True)} cores)"
+    )
     
-    return scan_report
+    return report
 
 @agent_tool
 def repair_environment(**kwargs) -> str:

@@ -1,9 +1,8 @@
 import subprocess
-import os
 from pathlib import Path
 from core.logger import logger
 from core.i18n import lang
-import re
+
 
 class SecurityValidator:
     """Validates commands and code for security risks."""

@@ -1,10 +1,8 @@
-﻿import os
-import time
-import pyttsx3
-from core.i18n import lang
-from .listener import listen_command
-from core.logger import logger
+import os
+import requests
+
 from core.skills.wrapper import agent_tool
+from .processor import speak as _core_speak, transcribe_audio
 
 def _play_audio(fpath: str):
     """Internal audio player for saved files."""
@@ -17,17 +15,6 @@ def _play_audio(fpath: str):
         pygame.mixer.quit()
     except Exception: os.system(f'start /min "" "{fpath}"')
 
-def _clean_text_for_speech(text: str) -> str:
-    """Removes Markdown and technical symbols for clear speech."""
-    import re
-    # Remove markdown formatting
-    text = re.sub(r'[*_#`~>\[\]\(\)]', '', text)
-    # Remove code blocks and backticks
-    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
-    # Remove multi-newlines
-    text = re.sub(r'\n+', ' ', text)
-    return text.strip()
-
 @agent_tool
 def speak(text: str, **kwargs) -> str:
     """
@@ -36,45 +23,14 @@ def speak(text: str, **kwargs) -> str:
     """
     speed_factor = kwargs.get("speed", 1.0)
     voice_idx = kwargs.get("voice_index")
-    
-    # Clean text before speaking
-    clean_text = _clean_text_for_speech(text)
-    if not clean_text:
-        return "Nothing to speak (text was empty after cleaning)."
-
-    try:
-        engine = pyttsx3.init()
-        
-        # 1. Налаштування швидкості (170 - золота середина)
-        base_rate = 170
-        engine.setProperty('rate', int(base_rate * speed_factor))
-        
-        # 2. Вибір голосу
-        voices = engine.getProperty('voices')
-        if voice_idx is not None and 0 <= int(voice_idx) < len(voices):
-            engine.setProperty('voice', voices[int(voice_idx)].id)
-        else:
-            uk_keywords = ["ukrainian", "uk-ua", "olena", "anatol", "ирина", "ukr"]
-            for v in voices:
-                if any(k in v.name.lower() or k in v.id.lower() for k in uk_keywords):
-                    engine.setProperty('voice', v.id)
-                    break
-            else:
-                if len(voices) > 1:
-                    engine.setProperty('voice', voices[1].id)
-
-        engine.say(clean_text)
-        engine.runAndWait()
-        engine.stop()
-        
-        return f"Vocal confirmation: '{clean_text}'"
-    except Exception as e:
-        logger.error(f"TTS Error: {e}")
-        return f"TTS Local Error: {e}"
+    # Call core processing logic
+    result = _core_speak(text, speed_factor=speed_factor, voice_idx=voice_idx)
+    return f"Vocal response: '{text[:100]}...'" if "Error" not in result else result
 
 @agent_tool
 def listen_for_voice(**kwargs) -> str:
     """Standard 2026 Microphone Input (Voice-to-Text)."""
+    from .listener import listen_command
     try:
         text = listen_command()
         return f"Vocal Command Capture: '{text}'" if text else "Silence."
@@ -87,5 +43,35 @@ def voice_alert(level: str = "warning", **kwargs) -> str:
     msg = "AXIS System Warning: Action Required." if level == "warning" else "Task Completed Successfully."
     return speak(msg, speed=1.1)
 
-EXPORTED_TOOLS = [speak, listen_for_voice, voice_alert]
+# --- Internal bridges for Telegram/API ---
+def transcribe_audio_file(file_path: str) -> str:
+    """Non-tool function for other modules to transcribe saved files."""
+    return transcribe_audio(file_path)
 
+def respond_with_voice(text: str, chat_id: str, bot_token: str) -> tuple[bool, str]:
+    """
+    Acts as a 'Vocal Response' for remote users. (v2.9.7: Returns (success, error_msg))
+    """
+    from .processor import generate_voice_file
+    path = generate_voice_file(text)
+    if not path or not os.path.exists(path): 
+        return False, "Failed to generate .ogg file via TTS/FFmpeg."
+    
+    url = f"https://api.telegram.org/bot{bot_token}/sendVoice"
+    try:
+        with open(path, 'rb') as f:
+            r = requests.post(url, data={'chat_id': chat_id}, files={'voice': f}, timeout=30)
+            if r.status_code == 200:
+                success = True
+                err = ""
+            else:
+                success = False
+                err = f"Telegram API Error {r.status_code}: {r.text}"
+        
+        # Cleanup
+        if os.path.exists(path): os.remove(path)
+        return success, err
+    except Exception as e: 
+        return False, str(e)
+
+EXPORTED_TOOLS = [speak, listen_for_voice, voice_alert]

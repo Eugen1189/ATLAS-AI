@@ -1,8 +1,4 @@
-﻿import pyautogui
-import time
-import os
-import json
-from core.i18n import lang
+import pyautogui
 from core.vision_engine import vision_engine
 from core.logger import logger
 from core.skills.wrapper import agent_tool
@@ -11,7 +7,7 @@ from core.skills.wrapper import agent_tool
 pyautogui.FAILSAFE = True
 
 @agent_tool
-def click_screen(x: int, y: int, clicks: int = 1, button: str = 'left') -> str:
+def click_screen(x: int, y: int, clicks: int = 1, button: str = 'left', **kwargs) -> str:
     """
     Standard 2026 Mouse Interaction.
     """
@@ -38,7 +34,7 @@ def type_text(text: str, press_enter: bool = False, delay: float = 0.01) -> str:
         return f"Keyboard Action Failed: {e}"
 
 @agent_tool
-def press_hotkey(hotkey: str) -> str:
+def press_hotkey(hotkey: str, **kwargs) -> str:
     """
     Presses complex hotkeys. Example: 'ctrl,alt,delete' or 'win,r'.
     """
@@ -50,13 +46,13 @@ def press_hotkey(hotkey: str) -> str:
         return f"Hotkey Error: {e}"
 
 @agent_tool
-def get_screen_resolution() -> str:
+def get_screen_resolution(**kwargs) -> str:
     """Returns the current screen resolution (width, height)."""
     w, h = pyautogui.size()
     return f"Current Screen Resolution: {w}x{h}"
 
 @agent_tool
-def get_active_window() -> str:
+def get_active_window(**kwargs) -> str:
     """Returns the title of the currently focused window."""
     try:
         import pygetwindow as gw
@@ -65,12 +61,13 @@ def get_active_window() -> str:
     except Exception: return "Unknown Window (Requires pygetwindow)"
 
 @agent_tool
-def find_and_click_text(target_text: str) -> str:
+def find_and_click_text(target_text: str, **kwargs) -> str:
     """
     High-Level 2026 Skill: Uses Vision Engine to find text on screen and clicks it.
     Automatically handles multi-monitor or blurry text.
     """
-    print(f"🔍 AXIS Vision searching for UI element: '{target_text}'...")
+    logger.info("os.vision_search", target=target_text)
+
     
     # 1. Take fresh screenshot
     img_path = vision_engine.capture_screen()
@@ -99,4 +96,17 @@ def find_and_click_text(target_text: str) -> str:
     except Exception as e:
         return f"Coordinate extraction failed: {e}. Raw analysis: {analysis}"
 
-EXPORTED_TOOLS = [click_screen, type_text, press_hotkey, get_screen_resolution, find_and_click_text, get_active_window]
+@agent_tool
+def take_screenshot(**kwargs) -> str:
+    """
+    Captures a full screenshot of all monitors.
+    Returns: Path to the saved image file.
+    """
+    logger.info("os.screenshot")
+    try:
+        path = vision_engine.capture_screen()
+        return f"Successfully captured screen: {path}"
+    except Exception as e:
+        return f"Screenshot Failed: {e}"
+
+EXPORTED_TOOLS = [click_screen, type_text, press_hotkey, get_screen_resolution, find_and_click_text, get_active_window, take_screenshot]

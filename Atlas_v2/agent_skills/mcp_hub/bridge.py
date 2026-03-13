@@ -7,7 +7,9 @@ from core.logger import logger
 try:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
+    # Level 2 (2026): Memory transport for in-process unified access
     MCP_AVAILABLE = True
+
 except ImportError:
     MCP_AVAILABLE = False
     logger.warning("mcp.library_missing", message="mcp-python-sdk not installed. MCP Hub features will be disabled.")
@@ -94,6 +96,41 @@ class MCPBridge:
         except Exception as e:
             logger.error("mcp.server_connection_failed", name=name, error=str(e))
             return False
+
+    async def connect_internal(self):
+        """Pairs the internal MCPRegistry with the bridge for unified access."""
+        if not self.available: return
+        
+        from core.skills.mcp_registry import mcp_registry
+        # We simulate an MCP connection for internal tools to maintain protocol consistency
+        # In a real 2026 standard, this would be a full server-client over loopback or memory
+        # For performance, we'll store the registry itself as a 'virtual' session or wrap it
+        self.sessions["internal"] = mcp_registry
+        logger.info("mcp.internal_connected")
+
+    async def call_tool(self, server_name: str, tool_name: str, arguments: dict) -> str:
+        """Unified entry point for calling any tool (Internal or External MCP)"""
+        if server_name not in self.sessions:
+            return f"Error: MCP Server '{server_name}' not active."
+            
+        session = self.sessions[server_name]
+        
+        try:
+            # Check if it's the internal registry (virtual session)
+            if server_name == "internal":
+                # The registry handler we wrote returns TextContent
+                results = await session.server._tool_handlers["call"](tool_name, arguments)
+                return "\n".join(r.text for r in results)
+            
+            # External standard MCP session
+            result = await session.call_tool(tool_name, arguments=arguments)
+            # Standard MCP result extraction
+            if hasattr(result, 'content'):
+                return "\n".join(c.text for c in result.content if hasattr(c, 'text'))
+            return str(result)
+        except Exception as e:
+            logger.error("mcp.call_failed", server=server_name, tool=tool_name, error=str(e))
+            return f"MCP Call Error: {str(e)}"
 
     async def shutdown(self):
         """Close all MCP connections"""

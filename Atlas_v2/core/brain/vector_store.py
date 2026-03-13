@@ -57,10 +57,17 @@ class VectorStore:
                 metadata={"hnsw:space": "cosine"}
             )
             
+            # Category 3: Semantic Cache (Command -> Tool Call)
+            self.cache = self.client.get_or_create_collection(
+                name="axis_cache",
+                metadata={"hnsw:space": "cosine"}
+            )
+            
             logger.info("rag.vector_store_ready",
                         namespace=namespace,
                         knowledge_docs=self.knowledge.count(),
-                        session_docs=self.session.count())
+                        session_docs=self.session.count(),
+                        cache_entries=self.cache.count())
         except Exception as e:
             logger.error("rag.vector_store_init_error", error=str(e))
             self.client = None
@@ -77,6 +84,19 @@ class VectorStore:
                 logger.info("rag.session_purged", count=count)
         except Exception as e:
             logger.error("rag.purge_error", error=str(e))
+
+    def purge_cache(self):
+        """Wipes the semantic planner cache (v2.8.9)."""
+        try:
+            if self.cache:
+                count = self.cache.count()
+                self.client.delete_collection("axis_cache")
+                self.cache = self.client.create_collection("axis_cache")
+                logger.info("rag.cache_purged", count=count)
+                return count
+        except Exception as e:
+            logger.error("rag.cache_purge_error", error=str(e))
+        return 0
 
     @property
     def is_available(self) -> bool:
@@ -96,8 +116,10 @@ class VectorStore:
         if not self.is_available:
             return
 
-        target = self.knowledge if category == "knowledge" else self.session
-        if not target: return
+        if category == "knowledge": target = self.knowledge
+        elif category == "session": target = self.session
+        elif category == "cache": target = self.cache
+        else: return
 
         ids = []
         texts = []
@@ -134,8 +156,10 @@ class VectorStore:
 
         all_matches = []
         for cat in collections:
-            target = self.knowledge if cat == "knowledge" else self.session
-            if not target: continue
+            if cat == "knowledge": target = self.knowledge
+            elif cat == "session": target = self.session
+            elif cat == "cache": target = self.cache
+            else: continue
             
             try:
                 kwargs = {
@@ -185,6 +209,7 @@ class VectorStore:
                 "status": "ready",
                 "knowledge_docs": self.knowledge.count() if self.knowledge else 0,
                 "session_docs": self.session.count() if self.session else 0,
+                "cache_docs": self.cache.count() if self.cache else 0,
                 "persist_dir": self.persist_dir
             }
         except Exception as e:

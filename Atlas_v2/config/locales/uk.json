@@ -24,14 +24,14 @@
     },
     "telegram": {
         "keys_not_found": "⚠️ [Telegram Listener]: Ключі не знайдено.",
-        "starting_listen": "📡 [Telegram Listener]: Починаю прослуховування вхідних повідомлень...",
+        "starting_listen": "[Telegram Listener]: Починаю прослуховування вхідних повідомлень...",
         "incoming_btn": "\n📱 [Telegram Вхідне]: Натиснуто кнопку: {btn}",
         "confirm_yes_text": "✅ <b>Підтверджено</b>",
         "confirm_no_text": "❌ <b>Відхилено</b>",
         "incoming_voice": "\n📱 [Telegram Вхідне]: 🎤 Голосове повідомлення (поки не підтримується)",
         "voice_response": "🤖 Прийняв голосове повідомлення! Але поки мій аудіо-модуль для Telegram монтується, будь ласка, напиши текстом.",
         "incoming_text": "\n📱 [Telegram Вхідне]: {text}",
-        "outgoing_reply": "🤖 [Telegram Вихідне]: Відправляю відповідь на телефон...",
+        "outgoing_reply": "[Telegram Вихідне]: Відправляю відповідь на телефон...",
         "core_error": "\n❌ [Telegram Помилка Ядра]: {error}",
         "quota_error": "⚠️ Вибач, Євгене. Google тимчасово заблокував мої API-квоти. Чекаю на оновлення лімітів.",
         "sys_error": "⚠️ Системна помилка Ядра: {error}...",
@@ -57,13 +57,13 @@
         "no_msg_id": "[Telegram Bridge]: Не вдалося отримати message_id від Telegram"
     },
     "system": {
-        "welcome": "🚀 Запуск AXIS V2.5... (Модульна Архітектура)",
+        "welcome": "Запуск AXIS V2.7... (Модульна Архітектура)",
         "ready": "\n--- AXIS готовий до роботи ---\n(Введи текст для команд. Голосовий слухач активний у фоні. Для виходу напиши 'exit')",
-        "prompt": "\n👤 Ви: ",
+        "prompt": "\nВи: ",
         "shutdown": "Вимкнення систем AXIS...",
-        "you_said": "🗣️ Ви сказали: {text}",
-        "axis_said": "🤖 AXIS: {text}",
-        "sys_error": "❌ Системна помилка: {error}",
+        "you_said": "Ви сказали: {text}",
+        "axis_said": "AXIS: {text}",
+        "sys_error": "[ERROR] Системна помилка: {error}",
         "missing_gemini_key": "❌ GEMINI_API_KEY не знайдено! Перевірено шлях: {path}",
         "core_init_success": "🧠 [AXIS Core]: Ініціалізація успішна. Завантажено {count} інструментів.",
         "skill_loaded": "✅ [Kernel]: Скіл '{name}' завантажено.",
@@ -94,7 +94,7 @@
         "playing": "🔊 [Audio Output]: Відтворення аудіо...",
         "play_error": "🔊 [Audio Output]: Помилка відтворення аудіо: {error}",
         "env_error": "Помилка: OPENAI_API_KEY не знайдено в .env файлі.",
-        "starting_voice_listen": "🎙️ [AXIS]: Голосовий слухач активований у фоні (Silent Mode)"
+        "starting_voice_listen": "[AXIS]: Голосовий слухач активований у фоні (Silent Mode)"
     },
     "file_master": {
         "reading_dir": "📁 [File_Master]: Читаю директорію `{path}`...",

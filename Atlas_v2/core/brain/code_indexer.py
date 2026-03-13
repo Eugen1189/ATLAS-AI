@@ -6,9 +6,9 @@ Scans project files, splits them into semantic chunks, and indexes into the vect
 import os
 import hashlib
 import json
-from pathlib import Path
-from datetime import datetime
+import time
 from core.logger import logger
+
 
 
 class CodeIndexer:
@@ -357,6 +357,8 @@ class CodeIndexer:
                 if n_chunks > 0:
                     stats["files_indexed"] += 1
                     stats["chunks_total"] += n_chunks
+                    # --- THROTTLE INDEXING (v3.2.4 "Cool Down") ---
+                    time.sleep(0.1) 
 
         self._save_hash_cache()
 

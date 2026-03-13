@@ -32,7 +32,8 @@ class TestBrain(unittest.TestCase):
 
     @patch('core.brain.ollama_brain.ollama')
     @patch('core.brain.ollama_brain.BlueprintManager')
-    def test_ollama_brain(self, mock_bp, mock_ollama):
+    def test_ollama_brain(self, mock_bp):
+
         def dummy_tool():
             """Dummy Tool"""
             return "Execution result"

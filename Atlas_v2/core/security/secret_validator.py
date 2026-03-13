@@ -85,8 +85,9 @@ class SecretValidator:
                 else:
                     # Optional key not set — that's fine
                     result["warnings"].append(
-                        f"{name} ({env_var}) not set — feature disabled"
+                        f"{name} ({env_var}) not set - feature disabled"
                     )
+
                 continue
 
             # Validate format (without logging the actual value)
@@ -109,30 +110,30 @@ class SecretValidator:
         """
         result = cls.validate_all(brain_type)
 
-        print("\n🔐 [SECRET VALIDATOR REPORT]")
+        print("\n[SECRET VALIDATOR REPORT]")
 
         if result["valid"]:
             for name in result["valid"]:
-                print(f"  ✅ {name}: configured")
+                print(f"  [OK] {name}: configured")
 
         if result["warnings"]:
             for warning in result["warnings"]:
-                print(f"  ⚠️  {warning}")
+                print(f"  [WARN] {warning}")
 
         if result["malformed"]:
             for name in result["malformed"]:
-                print(f"  ❌ {name}: MALFORMED (check format)")
+                print(f"  [ERROR] {name}: MALFORMED (check format)")
 
         if result["missing"]:
             for name in result["missing"]:
-                print(f"  🚨 {name}: MISSING (required for {brain_type})")
+                print(f"  [CRITICAL] {name}: MISSING (required for {brain_type})")
 
         has_issues = bool(result["missing"] or result["malformed"])
 
         if not has_issues:
-            print("  🛡️ Status: All required secrets OK")
+            print("  [STATUS] All required secrets OK")
         else:
-            print("  ⛔ Status: Fix issues above before proceeding")
+            print("  [STATUS] Fix issues above before proceeding")
 
         print("-" * 40 + "\n")
 

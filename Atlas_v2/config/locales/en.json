@@ -24,14 +24,14 @@
     },
     "telegram": {
         "keys_not_found": "⚠️ [Telegram Listener]: Keys not found.",
-        "starting_listen": "📡 [Telegram Listener]: Starting to listen for incoming messages...",
+        "starting_listen": "[Telegram Listener]: Starting to listen for incoming messages...",
         "incoming_btn": "\n📱 [Telegram Incoming]: Button pressed: {btn}",
         "confirm_yes_text": "✅ <b>Confirmed</b>",
         "confirm_no_text": "❌ <b>Declined</b>",
         "incoming_voice": "\n📱 [Telegram Incoming]: 🎤 Voice message (not supported yet)",
         "voice_response": "🤖 Received a voice message! But my audio module for Telegram is still being mounted, please type text for now.",
         "incoming_text": "\n📱 [Telegram Incoming]: {text}",
-        "outgoing_reply": "🤖 [Telegram Outgoing]: Sending reply to phone...",
+        "outgoing_reply": "[Telegram Outgoing]: Sending reply to phone...",
         "core_error": "\n❌ [Telegram Core Error]: {error}",
         "quota_error": "⚠️ Sorry, Eugen. Google has temporarily blocked my API quotas. Waiting for limit renewal.",
         "sys_error": "⚠️ Core System Error: {error}...",
@@ -57,13 +57,13 @@
         "no_msg_id": "[Telegram Bridge]: Failed to retrieve message_id from Telegram"
     },
     "system": {
-        "welcome": "🚀 Booting AXIS V2.5... (Modular Architecture)",
+        "welcome": "Booting AXIS V2.7... (Modular Architecture)",
         "ready": "\n--- AXIS is ready ---\n(Type text for commands. Voice listener is active in the background. Type 'exit' to quit)",
-        "prompt": "\n👤 You: ",
+        "prompt": "\nYou: ",
         "shutdown": "Shutting down AXIS systems...",
-        "you_said": "🗣️ You said: {text}",
-        "axis_said": "🤖 AXIS: {text}",
-        "sys_error": "❌ System error: {error}",
+        "you_said": "You said: {text}",
+        "axis_said": "AXIS: {text}",
+        "sys_error": "[ERROR] System error: {error}",
         "missing_gemini_key": "❌ GEMINI_API_KEY not found! Checked path: {path}",
         "core_init_success": "🧠 [AXIS Core]: Initialization successful. Loaded {count} tools.",
         "skill_loaded": "✅ [Kernel]: Skill '{name}' loaded.",
@@ -94,7 +94,7 @@
         "playing": "🔊 [Audio Output]: Playing audio...",
         "play_error": "🔊 [Audio Output]: Error playing audio: {error}",
         "env_error": "Error: OPENAI_API_KEY not configured in .env file.",
-        "starting_voice_listen": "🎙️ [AXIS]: Voice listener activated in background (Silent Mode)"
+        "starting_voice_listen": "[AXIS]: Voice listener activated in background (Silent Mode)"
     },
     "file_master": {
         "reading_dir": "📁 [File_Master]: Reading directory `{path}`...",

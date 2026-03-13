@@ -53,8 +53,9 @@ class EnvironmentDiscoverer:
         "primary_workspace": None
     }
 
-    def __init__(self, memory_manager=None):
+    def __init__(self, memory_manager=None, project_root: str = None):
         self.memory_manager = memory_manager
+        self.project_root = project_root
 
     def scan_ides(self) -> dict:
         """
@@ -140,6 +141,35 @@ class EnvironmentDiscoverer:
         self.findings["hardware"] = hw
         return hw
 
+    def incremental_scan(self, target_tool: str = None) -> dict:
+        """
+        Performs a fast, targeted scan of the environment. 
+        Used when a tool is requested but not currently known.
+        """
+        logger.info("discovery.incremental_scan", target=target_tool or "ALL")
+        
+        if target_tool:
+            # Targeted scan for a specific CLI tool
+            path = shutil.which(target_tool)
+            if path:
+                version = "unknown"
+                try:
+                    cmd = [target_tool, "--version"]
+                    if target_tool == "python": cmd = [target_tool, "-V"]
+                    output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=2)
+                    version = output.decode().strip()
+                except Exception: pass
+                
+                self.findings["tools"][target_tool] = {"path": path, "version": version}
+                logger.info("discovery.new_tool_found", tool=target_tool, version=version)
+        else:
+            # Refresh everything
+            self.scan_ides()
+            self.scan_path_for_tools()
+            self.scan_hardware()
+            
+        return self.findings
+
     def map_workspaces(self) -> list:
         """
         Zero-Config Workspace Discovery.
@@ -147,8 +177,8 @@ class EnvironmentDiscoverer:
         """
         logger.debug("discovery.workspace_mapping_started")
         
-        # 1. Start from current directory
-        current = Path(os.getcwd()).resolve()
+        # 1. Start from explicitly provided root or current directory
+        current = Path(self.project_root if self.project_root else os.getcwd()).resolve()
         markers = [".git", ".vscode", "pyproject.toml", "package.json", ".atlas", ".axis"]
         
         primary = None

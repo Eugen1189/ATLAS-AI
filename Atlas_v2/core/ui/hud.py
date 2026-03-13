@@ -48,6 +48,10 @@ class TelemetryListener(QThread):
                 print(f"HUD Telemetry Socket Error: {e}")
         except Exception as e:
             print(f"HUD Telemetry Thread Fatal Error: {e}")
+        finally:
+            if 'sock' in locals():
+                sock.close()
+                print("🔒 HUD Telemetry Socket Closed.")
 
 class HUDLogHandler(logging.Handler):
     """
@@ -78,7 +82,7 @@ class AxisHUD(QMainWindow):
         Initializes the HUD window with specific flags and log streaming bridge.
         """
         super().__init__()
-        logger.info("ui.hud_initializing", version="2.5.0")
+        logger.info("ui.hud_initializing", version="3.2.8")
         
         # 1. State and Bridge
         self.max_logs = 5
@@ -117,7 +121,7 @@ class AxisHUD(QMainWindow):
         self.top_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         
         # Main Title
-        self.status_label = QLabel("AXIS v2.5 | LOCAL BRAIN")
+        self.status_label = QLabel("AXIS v3.2.8 | IRON MAN MODE")
         self.status_label.setFont(QFont("Consolas", 14, QFont.Weight.Bold))
         self.status_label.setStyleSheet("color: #00BFFF; background: rgba(0,0,0,180); padding: 5px 15px; border-top-left-radius: 10px; border: 1px solid #00BFFF;")
         
@@ -223,9 +227,10 @@ class AxisHUD(QMainWindow):
         label.setFont(QFont("Consolas", 10))
         
         if is_rag:
-            label.setStyleSheet("color: #00FFFF; background: rgba(0,255,255,40); padding: 4px; border-left: 3px solid #00FFFF;")
+            # Azure/Cyan Pulse for Memory Retrieval
+            label.setStyleSheet("color: #00FFFF; background: rgba(0,255,255,30); padding: 5px; border-left: 4px solid #00FFFF; border-right: 1px solid rgba(0,255,255,50);")
         else:
-            label.setStyleSheet("color: #00FF00; background: rgba(0,0,0,100); padding: 2px;")
+            label.setStyleSheet("color: #00FF00; background: rgba(0,0,0,120); padding: 3px; border-left: 2px solid #00FF00;")
         
         self.log_layout.addWidget(label)
         self.log_labels.append(label)

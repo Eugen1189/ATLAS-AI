@@ -39,6 +39,18 @@ class SecurityGuard:
         "/root"
     ]
 
+    # Sensitive project files blocked for reading/writing even within workspace
+    BLACKLIST = [
+        ".env",
+        ".git/config",
+        "facts_atlas.json",
+        "facts_default.json",
+        "embeddings_",
+        ".key",
+        "shadow",
+        "passwd"
+    ]
+
     @classmethod
     def set_workspace(cls, path: str):
         """Updates the trusted workspace root."""
@@ -71,11 +83,17 @@ class SecurityGuard:
             if critical in p:
                 logger.warning("security.critical_path_blocked", path=path_str)
                 return False
+
+        # 2. Blacklist Check: Block access to credentials and sensitive config
+        for sensitive in SecurityGuard.BLACKLIST:
+            if sensitive in p:
+                logger.warning("security.blacklist_blocked", path=path_str, pattern=sensitive)
+                return False
         
-        # 2. Workspace-Fluid Check: If it's inside the workspace, it's generally trusted
+        # 3. Workspace-Fluid Check: If it's inside the workspace, it's generally trusted
         is_in_workspace = p.startswith(SecurityGuard.workspace_root)
         
-        # 3. Core Protection (Optional Layer)
+        # 4. Core Protection (Optional Layer)
         if check_core:
             # We prevent direct rewrites of core AXIS system files even inside workspace
             # unless they are explicitly marked as user-modifiable (like blueprints/configs)

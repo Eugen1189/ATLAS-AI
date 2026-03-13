@@ -4,7 +4,8 @@ Tests VectorStore, CodeIndexer, and RAGRetriever.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
+
 import os
 import json
 import tempfile
