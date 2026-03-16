@@ -7,6 +7,7 @@ This document serves as the primary "constitution" for AI agents (AXIS, Claude, 
 
 ## 🏗️ Technical Stack (2026)
 - **Core Engine**: Python 3.11+
+- **Security Protocol**: Bunker v5.5 (Egress Filtering + HITL + Ephemeral Sandboxing)
 - **Brain**: [Ollama](https://ollama.ai/) (Optimized for Qwen2.5-Coder:7b)
 - **RAG & Memory**: [ChromaDB](https://www.trychroma.com/)
 - **Protocol**: MCP (Model Context Protocol)
@@ -53,6 +54,13 @@ To prevent LLM deadlocks (waiting for external fix), the system implements an au
 - **Testing**: `pytest` is mandatory for all core changes.
 - **Coverage**: Maintain >80% coverage.
 - **Linting**: Rules are enforced by `ruff`.
+
+---
+
+## 🛡️ Anti-Looping & Protection
+- **Infinite Loop Prevention**: If a tool fails more than twice with the same or similar arguments, AXIS must STOP and request Human-In-The-Loop (HITL) clarification.
+- **Argument Mapping**: When in doubt about argument names, always use `path` for file-related tasks and `text` for strings/prompts.
+- **Fail-Fast**: If `parser_healer` (Healer 2.0) is triggered twice on the same step, abort current plan and ask the user for help.
 
 ---
 *Created as part of the 2026 AI standard integration.*

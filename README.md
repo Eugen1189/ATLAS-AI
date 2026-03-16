@@ -1,10 +1,10 @@
-# 🌌 AXIS v2.7.21 - Autonomous Spatial AI Framework
+# 🌌 AXIS v5.5 "Bunker" - Autonomous Spatial AI Framework
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.7.21-blue.svg)]()
+[![Version](https://img.shields.io/badge/Version-5.5--Bunker-blue.svg)]()
 [![Core](https://img.shields.io/badge/Core-Local--First-green.svg)]()
 
-**AXIS** (Autonomous eXtended Intelligence System) is a high-performance, local-first AI agent designed for advanced OS interaction. Built for extreme reliability via **Pure Architecture (v2.7.20+)**.
+**AXIS** (Autonomous eXtended Intelligence System) is a high-performance, local-first AI agent designed for advanced OS interaction. Built for extreme reliability via **Bunker v5.5 Security Protocol**.
 
 ---
 

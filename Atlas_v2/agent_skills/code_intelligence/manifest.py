@@ -8,26 +8,26 @@ import subprocess
 from core.logger import logger
 
 @agent_tool
-def refactor_code(filepath: str, instructions: str, new_code: str, **kwargs) -> str:
+def refactor_code(path: str, instructions: str, new_code: str, **kwargs) -> str:
     """
-    Expert-level refactoring tool (v2.8.6).
+    Expert-level refactoring tool (v2.8.7).
     1. Analyzes file and project context via RAG.
     2. Requires Commander's confirmation via Telegram with a preview.
     """
     # 1. Gather Context
-    current_content = read_file(filepath)
+    current_content = read_file(path)
     if "Error" in current_content:
         return current_content
         
     # Semantic search for usages and patterns related to this file
-    memory_manager.get_context_block(query=f"usages of {filepath} or architectural patterns", n_results=5)
+    memory_manager.get_context_block(query=f"usages of {path} or architectural patterns", n_results=5)
     
     # 2. Prepare Proposal
     # Truncate preview for Telegram
     code_preview = new_code[:500] + "..." if len(new_code) > 500 else new_code
     
     proposal_summary = (
-        f"🛠️ **REFACTOR PROPOSAL** for `{filepath}`:\n"
+        f"🛠️ **REFACTOR PROPOSAL** for `{path}`:\n"
         f"📝 **Instructions**: {instructions}\n\n"
         f"📄 **New Code Preview**:\n```python\n{code_preview}\n```\n"
         "Do you want me to apply these changes?"
@@ -40,43 +40,40 @@ def refactor_code(filepath: str, instructions: str, new_code: str, **kwargs) -> 
         return "❌ [REFUSED]: Commander rejected the refactoring proposal."
     
     # 4. Shadow Workspace Verification (March 2026 Protocol)
-    shadow_path = filepath + ".shadow_copy.py"
+    shadow_path = path + ".shadow_copy.py"
     logger.info("code_intelligence.shadow_verification_start", path=shadow_path)
     
     try:
         # Create shadow copy
-        write_file(filepath=shadow_path, content=new_code)
+        write_file(path=shadow_path, content=new_code)
         
         # A. Ruff Linting & Formatting
         logger.info("code_intelligence.ruff_check")
         ruff_res = subprocess.run(f"ruff check {shadow_path} --fix", shell=True, capture_output=True, text=True)
         
         if ruff_res.returncode != 0:
-            delete_file(shadow_path)
+            os.remove(shadow_path) if os.path.exists(shadow_path) else None
             return f"❌ [VERIFICATION FAILED]: Ruff found fatal errors:\n{ruff_res.stdout or ruff_res.stderr}"
             
         # B. Pytest (if applicable)
-        # Scan if there is a corresponding test file
-        test_file = os.path.join("tests", "test_" + os.path.basename(filepath))
+        test_file = os.path.join("tests", "test_" + os.path.basename(path))
         if os.path.exists(test_file):
             logger.info("code_intelligence.pytest_check", test=test_file)
-            # Run pytest against the shadow version (might need mocking/import redirection if complex)
-            # For simplicity in AXIS v2.8, we run the existing test suite
             pytest_res = subprocess.run(f"pytest {test_file}", shell=True, capture_output=True, text=True)
             if pytest_res.returncode != 0:
-                delete_file(shadow_path)
+                os.remove(shadow_path) if os.path.exists(shadow_path) else None
                 return f"❌ [VERIFICATION FAILED]: Unit tests failed for this change:\n{pytest_res.stdout[:500]}..."
 
         # 5. Apply Changes only after verification
-        result = write_file(filepath=filepath, content=new_code)
-        delete_file(shadow_path)
+        result = write_file(path=path, content=new_code)
+        if os.path.exists(shadow_path): os.remove(shadow_path)
         
         if "✅" in result:
-            send_telegram_message(text=f"🚀 **SUCCESS**: File `{filepath}` has been verified (Ruff/Pytest) and refactored.")
-            return f"✅ [VERIFIED & REFACTORED]: {filepath} passed security checks and updated."
+            send_telegram_message(text=f"🚀 **SUCCESS**: File `{path}` has been verified (Ruff/Pytest) and refactored.")
+            return f"✅ [VERIFIED & REFACTORED]: {path} passed security checks and updated."
             
     except Exception as e:
-        if os.path.exists(shadow_path): delete_file(shadow_path)
+        if os.path.exists(shadow_path): os.remove(shadow_path)
         return f"🔥 [SYSTEM ERROR] during verification: {e}"
     
     return result

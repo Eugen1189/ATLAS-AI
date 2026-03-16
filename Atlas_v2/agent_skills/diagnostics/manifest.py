@@ -78,5 +78,23 @@ def repair_environment(**kwargs) -> str:
     
     return "### Repair Report:\n" + "\n".join(fixes)
 
-EXPORTED_TOOLS = [analyze_performance, deep_system_scan, repair_environment]
+@agent_tool
+def refresh_environment_discovery(target_tool: str = None, **kwargs) -> str:
+    """
+    [BUNKER v5.5] Triggers an incremental scan of the environment.
+    Use this if a tool (like 'code', 'git', etc.) is missing or if the workspace structure changed.
+    """
+    from core.system.discovery import EnvironmentDiscoverer
+    discoverer = EnvironmentDiscoverer()
+    results = discoverer.incremental_scan(target_tool=target_tool)
+    
+    if target_tool:
+        info = results.get("tools", {}).get(target_tool)
+        if info:
+            return f"✅ Found {target_tool} at {info['path']} (Version: {info['version']})"
+        return f"❌ {target_tool} not found in PATH after scan."
+    
+    return "✅ Full environment discovery refresh complete."
+
+EXPORTED_TOOLS = [analyze_performance, deep_system_scan, repair_environment, refresh_environment_discovery]
 

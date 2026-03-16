@@ -13,6 +13,14 @@ os.environ["OPENBLAS_NUM_THREADS"] = "4"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 os.environ["NUMEXPR_NUM_THREADS"] = "4"
 
+# [BUNKER v5.5] UTF-8 Forced Encoding for Windows Terminals
+if os.name == 'nt':
+    import io
+    os.system('chcp 65001 > nul')
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+
 
 # Встановлюємо шляхи для імпортів
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -33,8 +41,37 @@ def safe_print(text: str):
         # Fallback for legacy terminals (strips emojis and non-supported chars)
         print(text.encode(sys.stdout.encoding, errors='replace').decode(sys.stdout.encoding))
 
+def bunker_ephemeral_cleanup():
+    """
+    [BUNKER v5.5] Ephemeral Sanitization:
+    Removes temporary session files, voice buffers, and logs to prevent persistence.
+    """
+    temp_files = [
+        "vision_buffer.png",
+        "response_audio.mp3",
+        "last_action.json",
+        "diagnostic.png"
+    ]
+    for f in temp_files:
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception: pass
+            
+    # Cleanup temp/ folder if exists
+    import shutil
+    temp_dir = os.path.join(os.getcwd(), "tmp")
+    if os.path.exists(temp_dir):
+        try:
+            shutil.rmtree(temp_dir)
+            os.makedirs(temp_dir, exist_ok=True)
+        except Exception: pass
+
+    safe_print("[BUNKER] Ephemeral environment sanitized. Persistence neutralized.")
+
 def cleanup_zombie_processes():
     """Cleans up hung HUD or Python processes using port 5005 to prevent 'Port busy' errors."""
+    bunker_ephemeral_cleanup() # Integrate with bunker cleanup
     if os.name == 'nt':
         try:
             # Find PID using port 5005

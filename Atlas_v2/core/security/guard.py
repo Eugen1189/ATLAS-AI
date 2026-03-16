@@ -21,7 +21,7 @@ class SecurityGuard:
         r"dd\s+if=",                # Direct disk write
         r"shutdown",                # OS shutdown
         r"reboot",                  # OS reboot
-        r"\.exe",                   # Untrusted executables
+        r"\.exe\b",                # Untrusted executables (boundary check)
         r"powershell\s+.*-ExecutionPolicy\s+Bypass", # Policy bypass
         r"> /dev/sd[a-z]",          # Direct disk write
         r":\(\){ :\|:& };:",        # Fork bomb

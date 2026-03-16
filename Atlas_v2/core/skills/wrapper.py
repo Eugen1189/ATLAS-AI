@@ -16,11 +16,16 @@ def agent_tool(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            # 1. Tolerance Filter
+            # 1. Tolerance Filter: Only filter if function DOES NOT accept **kwargs
             import inspect
             sig = inspect.signature(func)
-            valid_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+            has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
             
+            if not has_kwargs:
+                valid_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+            else:
+                valid_kwargs = kwargs
+                
             # 2. Logic Execution
             result = func(*args, **valid_kwargs)
             

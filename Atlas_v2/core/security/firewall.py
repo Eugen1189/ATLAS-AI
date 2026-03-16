@@ -18,6 +18,28 @@ class AxisFirewall:
         self._request_history: dict[str, deque] = defaultdict(deque)
         self.max_requests = max_requests
         self.window_sec = window_sec
+        
+        # [BUNKER v5.5] Egress Filtering: Allowed domains for AXIS
+        self.allowed_hosts = [
+            "localhost",
+            "127.0.0.1",
+            "api.telegram.org",
+            "generativelanguage.googleapis.com", 
+            "ollama.ai",
+            "github.com"
+        ]
+        
+        # [BUNKER v5.5] HITL Patterns: Commands that MUST be confirmed
+        self.destructive_patterns = [
+            r"rm\s+-rf",
+            r"del\s+/f",
+            r"format\s+",
+            r"rd\s+/s",
+            r"mkfs",
+            r"net\s+user\s+.* /add",
+            r"reg\s+delete"
+        ]
+
         # Prompt injection and dangerous override patterns
         self.forbidden_patterns = [
             "ignore instructions",
@@ -30,6 +52,39 @@ class AxisFirewall:
             "jailbreak",
             "dan mode",
         ]
+
+    def validate_egress(self, url: str) -> bool:
+        """
+        [BUNKER v5.5] Egress Filter: Blocks unauthorized external connections.
+        Only allows traffic to vetted API providers and localhost.
+        """
+        import re
+        from urllib.parse import urlparse
+        
+        try:
+            parsed = urlparse(url)
+            host = parsed.hostname
+            if not host:
+                return False
+                
+            for allowed in self.allowed_hosts:
+                if host == allowed or host.endswith("." + allowed):
+                    return True
+            
+            logger.warning("firewall.egress_blocked", host=host, url=url)
+            return False
+        except Exception:
+            return False
+
+    def needs_confirmation(self, command: str) -> bool:
+        """
+        [BUNKER v5.5] HITL Detector: Identifies if a command requires user approval.
+        """
+        import re
+        for pattern in self.destructive_patterns:
+            if re.search(pattern, command, re.IGNORECASE):
+                return True
+        return False
 
     def is_request_allowed(self, source: str = "terminal") -> bool:
         """

@@ -6,7 +6,10 @@ class SemanticRouter:
     """
     Semantic Router (Phase 1): Fast regex-based classifier for instant command execution.
     Bypasses the main LLM for common unambiguous patterns to save time/tokens.
+    [PROTOCOL 2.0]: Implements autonomous retry limit for self-healing.
     """
+    RETRY_LIMIT = 2
+
     def __init__(self, axis_core):
         self.axis = axis_core
         # Pattern -> (Plugin_Folder, Tool_Name, Fixed_Arguments)

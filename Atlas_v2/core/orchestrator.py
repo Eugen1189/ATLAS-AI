@@ -136,7 +136,8 @@ class AxisCore:
             "os_control": "System",
             "telegram_bridge": "System",
             "code_intelligence": "Memory",
-            "skill_factory": "System"
+            "skill_factory": "System",
+            "database_master": "Files"
         }
 
         if not skills_dir.exists():
@@ -229,7 +230,9 @@ class AxisCore:
             return fast_response
 
         # --- Layer 4: Semantic Caching (RAG 2.0 - March 2026) ---
-        cached_plan = memory_manager.get_semantic_cache(user_input)
+        cached_plan = None
+        if os.getenv("DISABLE_SEMANTIC_CACHE", "false").lower() != "true":
+            cached_plan = memory_manager.get_semantic_cache(user_input)
         
         if cached_plan:
             logger.info("system.using_cached_strategy", source="chromadb")

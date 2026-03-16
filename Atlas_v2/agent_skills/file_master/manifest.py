@@ -6,8 +6,9 @@ from core.skills.wrapper import agent_tool
 from core.system.path_utils import resolve_path
 
 @agent_tool
-def list_directory(path: str = ".", **kwargs) -> str:
-    """Lists directory contents. Supports keywords like 'Desktop'."""
+def list_directory(path: str, **kwargs) -> str:
+    """Lists directory contents strictly using the provided path."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path') or "."
     path = resolve_path(path)
 
     try:
@@ -26,6 +27,7 @@ def list_directory(path: str = ".", **kwargs) -> str:
 @agent_tool
 def open_item(path: str, **kwargs) -> str:
     """Opens a file, video, or folder on the user's screen (double-click)."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
     if not os.path.exists(path): return f"Error: Path {path} not found."
     
@@ -39,8 +41,9 @@ def open_item(path: str, **kwargs) -> str:
         return f"failed to open {path}: {e}"
 
 @agent_tool
-def get_file_tree(path: str = ".", max_depth: int = 3, **kwargs) -> str:
+def get_file_tree(path: str = None, max_depth: int = 3, **kwargs) -> str:
     """Returns a recursive tree visualization of the project structure."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path') or "."
     path = resolve_path(path)
     result = [f"### Project Tree: {path}"]
     def _recruit(current_path, indent, depth):
@@ -60,19 +63,25 @@ def get_file_tree(path: str = ".", max_depth: int = 3, **kwargs) -> str:
 
 @agent_tool
 def read_file(path: str, **kwargs) -> str:
-    """Reads file content. Large files trigger warning for search tool."""
+    """Reads file content safely using UTF-8. Path is REQUIRED."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
     try:
         if not os.path.exists(path): return lang.get("file_master.file_not_found", path=path)
         size = os.path.getsize(path)
         if size > 150000: return f"⚠️ File {path} too large ({size}b). Use search_text_in_files."
-        with open(path, 'r', encoding='utf-8', errors='ignore') as f: content = f.read()
-        return f"--- {path} ---\n{content}\n--- End ---"
+        with open(path, 'r', encoding='utf-8') as f: content = f.read()
+        return f"--- ABSOLUTE PATH: {path} ---\n{content}\n--- End ---"
+    except UnicodeDecodeError:
+        # Fallback with replacement only if UTF-8 strictly fails
+        with open(path, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
+        return f"--- ABSOLUTE PATH: {path} (Encoding Warning: Non UTF-8 chars replaced) ---\n{content}\n--- End ---"
     except Exception as e: return f"Read Error: {e}"
 
 @agent_tool
-def write_file(path: str, content: str, **kwargs) -> str:
-    """Overwrites or creates a file with specified content."""
+def write_file(path: str, content: str = "", **kwargs) -> str:
+    """Overwrites or creates a file with specified content (UTF-8)."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -82,12 +91,13 @@ def write_file(path: str, content: str, **kwargs) -> str:
         from core.brain.memory import memory_manager
         memory_manager.reindex_file(path)
         
-        return f"✅ [FILE WRITTEN]: {path}"
+        return f"✅ [FILE WRITTEN]: {path} (UTF-8)"
     except Exception as e: return f"Write Error: {e}"
 
 @agent_tool
-def append_to_file(path: str, content: str, **kwargs) -> str:
-    """Appends content to a file."""
+def append_to_file(path: str, content: str = "", **kwargs) -> str:
+    """Appends content to a file. Path is REQUIRED."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -97,12 +107,14 @@ def append_to_file(path: str, content: str, **kwargs) -> str:
         from core.brain.memory import memory_manager
         memory_manager.reindex_file(path)
         
-        return f"📝 [APPEND SUCCESS]: {path}"
+        return f"📝 [APPEND SUCCESS]: {path} (UTF-8)"
     except Exception as e: return f"Append Error: {e}"
 
 @agent_tool
-def delete_file(path: str, **kwargs) -> str:
+def delete_file(path: str = None, **kwargs) -> str:
     """Deletes a file or empty directory."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
+    if not path: return "Error: No path provided."
     path = resolve_path(path)
     try:
         if os.path.isdir(path): os.rmdir(path)
@@ -111,8 +123,9 @@ def delete_file(path: str, **kwargs) -> str:
     except Exception as e: return f"Delete Error: {e}"
 
 @agent_tool
-def search_text_in_files(query: str, root_path: str = ".", **kwargs) -> str:
+def search_text_in_files(query: str, root_path: str = None, **kwargs) -> str:
     """Project-wide 'grep' for finding text or code patterns."""
+    root_path = root_path or kwargs.get('path') or kwargs.get('file_path') or "."
     root_path = resolve_path(root_path)
     matches = []
     for root, dirs, files in os.walk(root_path):
@@ -130,16 +143,20 @@ def search_text_in_files(query: str, root_path: str = ".", **kwargs) -> str:
     return "### Search Results:\n" + "\n".join(matches) if matches else f"No matches for '{query}'"
 
 @agent_tool
-def get_file_info(path: str, **kwargs) -> str:
+def get_file_info(path: str = None, **kwargs) -> str:
     """Returns metadata (size, dates) for a file."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
+    if not path: return "Error: No path provided."
     path = resolve_path(path)
     if not os.path.exists(path): return "File not found."
     stats = os.stat(path)
     return f"### {path} Info:\nSize: {stats.st_size} bytes\nModified: {datetime.datetime.fromtimestamp(stats.st_mtime)}"
 
 @agent_tool
-def make_directory(path: str, **kwargs) -> str:
+def make_directory(path: str = None, **kwargs) -> str:
     """Creates a directory and its parents if needed."""
+    path = path or kwargs.get('file_path') or kwargs.get('item_path')
+    if not path: return "Error: No path provided."
     path = resolve_path(path)
     try:
         os.makedirs(path, exist_ok=True)
@@ -148,8 +165,12 @@ def make_directory(path: str, **kwargs) -> str:
         return f"Error creating directory {path}: {e}"
 
 @agent_tool
-def copy_file(source: str, destination: str, **kwargs) -> str:
+def copy_file(source: str = None, destination: str = None, **kwargs) -> str:
     """Copies a file to a new location."""
+    source = source or kwargs.get('src') or kwargs.get('from')
+    destination = destination or kwargs.get('dest') or kwargs.get('to')
+    if not source or not destination: return "Error: Source and destination required."
+    
     source = resolve_path(source)
     destination = resolve_path(destination)
     

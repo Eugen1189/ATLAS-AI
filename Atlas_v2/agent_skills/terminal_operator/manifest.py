@@ -35,7 +35,7 @@ def execute_command(command: str, auto_fix: bool = True, **kwargs) -> str:
             timeout=60, 
             cwd=project_root,
             startupinfo=startupinfo,
-            encoding='cp866', 
+            encoding='utf-8', 
             errors='replace'
         )
         
@@ -68,29 +68,5 @@ def execute_command(command: str, auto_fix: bool = True, **kwargs) -> str:
     except Exception as e:
         return f"🔥 Системна помилка: {e}"
 
-@agent_tool
-def run_batch_script(commands: list, **kwargs) -> str:
-    """Executes multiple commands as a temporary batch script."""
-    from core.system.path_utils import get_project_root
-    project_root = str(get_project_root())
-
-    with tempfile.NamedTemporaryFile(suffix=".bat", delete=False, mode="w") as f:
-        f.write("@echo off\n" + "\n".join(commands))
-        script_path = f.name
-    
-    try:
-        res = execute_command(f'call "{script_path}"')
-        os.remove(script_path)
-        return f"📜 [BATCH EXECUTION DONE]:\n{res}"
-    except Exception as e: return f"Script Error: {e}"
-
-@agent_tool
-def get_system_uptime(**kwargs) -> str:
-    """Quick diagnostic: returns system boot time via CMD."""
-    try:
-        output = subprocess.check_output("systeminfo | find \"System Boot Time\"", shell=True, text=True)
-        return output.strip()
-    except Exception: return "Uptime unknown."
-
-EXPORTED_TOOLS = [execute_command, run_batch_script, get_system_uptime]
+EXPORTED_TOOLS = [execute_command]
 

@@ -12,7 +12,8 @@ class ToolHolster:
             "Media": ["capture_screen_snapshot", "send_telegram_photo", "analyze_screen"],
             "System": ["execute_command", "run_batch_script", "os_control"],
             "Memory": ["save_to_memory", "forget_topic", "find_code_usages"],
-            "Web": ["google_research", "perplexity_search", "fetch_website_content"]
+            "Web": ["google_research", "perplexity_search", "fetch_website_content"],
+            "Data": ["query_database", "get_db_schema"]
         }
 
         active_tools = set(ToolHolster.ESSENTIALS)
@@ -24,7 +25,8 @@ class ToolHolster:
             "Media": ["post", "instagram", "скрін", "screenshot", "фото", "зображення"],
             "System": ["cmd", "термінал", "виконати", "run", "setup"],
             "Memory": ["згадай", "факти", "історія", "history", "legacy", "архів"],
-            "Web": ["знайди", "інтернет", "search", "google", "research"]
+            "Web": ["знайди", "інтернет", "search", "google", "research"],
+            "Data": ["sql", "database", "база", "даних", "sqlite", "query", "таблиця"]
         }
 
         matched_categories = []

@@ -14,23 +14,39 @@ class Planner:
     Uses Gemini 2.0 Flash as the primary planning brain.
     """
     def __init__(self):
-        self.brain = GeminiBrain()
+        # [BUNKER v5.5] Adaptive Planning Engine — FORCED GEMINI MODE
+        import os
+        planner_type = os.getenv("PLANNER_BRAIN", "gemini").lower()
+        gemini_key = os.getenv("GEMINI_API_KEY")
+
+        # [REPAIR]: Disabled silent fallback to prevent reasoning degradation
+        # if planner_type == "gemini" and not gemini_key:
+        #    logger.warning("planner.fallback", reason="GEMINI_API_KEY missing, falling back to Ollama.")
+        #    planner_type = "ollama"
+
+        if planner_type == "ollama":
+            from .ollama_brain import OllamaBrain
+            self.brain = OllamaBrain()
+        else:
+            from .gemini_brain import GeminiBrain
+            self.brain = GeminiBrain()
+            
         self.tool_info = ""
         self.original_index = {}
         self.system_prompt = (
-            "You are the AXIS Strategic Planner (v2.9.0). Your job is to analyze the user's request "
+            "You are the AXIS Strategic Planner (v2.9.5). Your job is to analyze the user's request "
             "and create a detailed, optimized step-by-step execution plan.\n\n"
             "AVAILABLE CAPABILITIES:\n{tool_info}\n\n"
             "STRATEGIC RULES:\n"
-            "1. Break down complex tasks into atomic, logical steps.\n"
-            "2. Ensure each step transitions correctly into the next.\n"
-            "3. After receiving tool output, analyze if the task is finished. If yes, move to the next step.\n"
-            "4. DO NOT repeat the same tool call with same arguments more than once.\n"
-            "5. If a request is ambiguous, add a step to 'Scan and Explore' first.\n"
-            "6. [HEALER LOGIC]: If a tool fails due to a missing argument, the next step MUST be to "
-            "check the tool documentation (get_tool_info) instead of guessing parameters.\n"
-            "7. **STRICT ARGUMENT MAPPING**: For all tools, always use 'path' for file-related tasks (not filepath/file_path) and 'text' for communication or prompts.\n"
+            "1. DIRECT EXECUTION: If the USER REQUEST is a simple single-action command, your plan should contain exactly ONE step: a descriptive sentence of that action.\n"
+            "2. DATA INTEGRITY: When a user provides specific code or content, you MUST preserve it LITERALLY in the plan steps. Do not use placeholders.\n"
+            "3. DESCRIPTIVE STEPS: Each step in the 'plan' list must be a natural language instruction (e.g., 'Write the following code to index.html: [CODE]') rather than a function call or code string.\n"
+            "4. REPORTING: Every plan MUST end with a step that commands the agent to SHOW or REPORT the final result/output to the user. Never assume the user can see the internal tool output.\n"
+            "5. PATH PRECISION: Always use the full absolute path from the task context (e.g., 'C:/Projects/LegalMind/...'). NEVER omit subfolders or assume files are in the root.\n"
+            "6. DISK TRUTH: If the task involves code logic, the first step MUST be to READ the relevant file(s) from disk using 'read_file'. Do NOT rely on memory summaries.\n"
+            "7. EXECUTION OVER REFLECTION: Prioritize steps that execute commands or write files over steps that just 'analyze' or 'message'.\n"
             "8. Output exactly a JSON object. No chatter.\n"
+            "9. AUTONOMOUS REPAIR: If a technical error occurs (ModuleNotFoundError, git errors, path issues), the agent MUST solve it autonomously (e.g., pip install, git init, searching directories) without creating steps that ask the user for help. Do not 'message' the user about technical failures unless all autonomous attempts have failed.\n"
             "FORMAT: {{\"plan\": [\"step 1\", \"step 2\", ...]}}"
         )
 
@@ -82,31 +98,33 @@ class Planner:
             from .parser import extract_json_data
             data = extract_json_data(raw_response)
             
-            # Safe access: support both {"plan": [...]} and plain [...]
-            if isinstance(data, dict):
+            steps = []
+            # [BUNKER v5.5] Structural Repair Logic
+            if not data and raw_response.strip():
+                # Attempt to find list items directly if JSON parsing failed
+                steps = re.findall(r'"([^"]+)"', raw_response)
+                if not steps:
+                    logger.warning("planner.empty_plan", raw=raw_response)
+                    return [user_input]
+            elif isinstance(data, dict):
                 steps = data.get("plan", [])
-                # If "plan" key is missing, treat the whole dict as potentially malformed but valid steps if it has items
                 if not steps and data:
-                    # Alternative: if the model returned something else in JSON
-                    # we fall back to user input to be safe
                     steps = [user_input]
             elif isinstance(data, list):
                 steps = data
-            else:
-                steps = []
-
-            if not steps:
-                logger.warning("planner.empty_plan", raw=raw_response)
-                return [user_input]
             
-            logger.info("planner.plan_created", steps_count=len(steps))
-            return steps
+            # [REPAIR]: Post-processing to enforce STRICT ARGUMENT MAPPING (Rule 7)
+            sanitized_steps = []
+            for step in steps:
+                # [REPAIR]: Ensure step is a string before replacement (v2.9.7)
+                step_str = step if isinstance(step, str) else json.dumps(step)
+                s = step_str.replace('"file_path":', '"path":').replace('"filepath":', '"path":').replace('"item_path":', '"path":')
+                sanitized_steps.append(s)
+
+            logger.info("planner.plan_created", steps_count=len(sanitized_steps))
+            return sanitized_steps
             
         except Exception as e:
             logger.error("planner.json_failed", error=str(e), raw=raw_response[:200])
-            # Emergency Fallback: try to find anything like a list items
-            items = re.findall(r"\"(.*?)\"", raw_response)
-            # Filter out known keys that might have been caught
-            steps = [i for i in items if i.lower() not in ["plan", "steps", "strategy"]]
-            return steps if steps else [user_input]
+            return [user_input]
 

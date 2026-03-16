@@ -27,7 +27,7 @@ class GeminiBrain(BaseBrain):
         generation_config = {
             "temperature": 0.1,  # Low creativity for precise tool logic
             "top_p": 0.95,
-            "max_output_tokens": 4096, # Increased to prevent JSON truncation
+            "max_output_tokens": 8192, # Increased to prevent JSON truncation for large projects
             "response_mime_type": "application/json"
         }
 

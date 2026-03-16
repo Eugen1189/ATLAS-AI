@@ -105,8 +105,8 @@ def take_screenshot(**kwargs) -> str:
     logger.info("os.screenshot")
     try:
         path = vision_engine.capture_screen()
-        return f"Successfully captured screen: {path}"
+        return path # Returns raw path for internal tool chaining
     except Exception as e:
-        return f"Screenshot Failed: {e}"
+        return f"Error: Screenshot Failed: {e}"
 
 EXPORTED_TOOLS = [click_screen, type_text, press_hotkey, get_screen_resolution, find_and_click_text, get_active_window, take_screenshot]

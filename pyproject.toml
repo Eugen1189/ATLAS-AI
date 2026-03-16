@@ -16,7 +16,6 @@ dependencies = [
     "google-generativeai==0.8.5",
     "python-dotenv==1.2.1",
     "requests==2.32.5",
-    "urllib3<2.0.0",
     "pyyaml==6.0.3",
     "psutil>=5.9.0",
     "pyautogui>=0.9.54",
@@ -47,14 +46,13 @@ dev = [
     "pytest-timeout>=2.3.1",
     "vulture>=2.14",
     "deptry>=0.23.0",
-    "ruff>=0.3.0",
-    "google-genai==1.55.0"
+    "ruff>=0.3.0"
 ]
 
 [tool.deptry]
 pep621_dev_dependency_groups = ["dev"]
 package_module_name_map = { "nest-asyncio" = "nest_asyncio" }
-per_rule_ignores = { DEP002 = ["urllib3", "pytest-asyncio", "pytest-cov", "pytest-timeout", "vulture", "deptry", "ruff"], DEP004 = ["pytest"] }
+per_rule_ignores = { DEP002 = ["pytest-asyncio", "pytest-cov", "pytest-timeout", "vulture", "deptry", "ruff"], DEP004 = ["pytest"] }
 
 
 

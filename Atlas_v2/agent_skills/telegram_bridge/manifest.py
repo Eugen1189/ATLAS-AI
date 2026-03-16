@@ -31,8 +31,11 @@ def _resolve_path(path: str) -> str:
     return os.path.abspath(os.path.expanduser(path))
 
 @agent_tool
-def send_telegram_message(text: str, **kwargs) -> str:
-    """Відправляє текстове повідомлення на телефон Командора (через Telegram). Використовуй для віддалених звітів."""
+def send_telegram_message(text: str = None, **kwargs) -> str:
+    """Відправляє текстове повідомлення на телефон Командора."""
+    text = text or kwargs.get("message") or kwargs.get("text")
+    if not text: return "Error: No message text provided."
+    
     t, c = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
     if not t or not c: 
         return "❌ Помилка: Не налаштовані TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID у .env файлі."
@@ -95,8 +98,9 @@ def send_telegram_photo(path: str, text: str = "", **kwargs) -> str:
         return f"❌ Критична помилка з'єднання з Telegram під час відправки файлу: {e}"
 
 @agent_tool
-def ask_user_confirmation(text: str, **kwargs) -> bool:
-    """Standard 2026 HITL: Pauses execution until user confirms action via Telegram phone app."""
+def ask_user_confirmation(text: str = None, **kwargs) -> bool:
+    """Standard 2026 HITL: Pauses execution until user confirms action. Path: communication."""
+    text = text or kwargs.get("message") or kwargs.get("text") or "Confirm action?"
     t, c = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
     kb = {"inline_keyboard": [[{"text": "✅ Yes", "callback_data": "confirm_yes"}, {"text": "❌ No", "callback_data": "confirm_no"}]]}
     try:
@@ -127,12 +131,18 @@ def send_home_report(**kwargs) -> str:
     і негайно відправляє його в Telegram Командору.
     Використовуй це, коли користувач питає 'що вдома', 'який статус' або 'надішли скріншот і стан системи'.
     """
-    from agent_skills.vision_eye.manifest import take_screenshot
-    from agent_skills.diagnostics.manifest import deep_system_scan
+    try:
+        # Cross-skill imports (using relative imports to avoid registry issues)
+        from ..os_control.manifest import take_screenshot
+        from ..diagnostics.manifest import deep_system_scan
+    except (ImportError, ValueError):
+        # Fallback for different execution contexts
+        from agent_skills.os_control.manifest import take_screenshot
+        from agent_skills.diagnostics.manifest import deep_system_scan
     
     # 1. Take Screenshot
     path = take_screenshot()
-    if "Failed" in path:
+    if not path or "Error" in path or not os.path.exists(path):
         return f"Error taking screenshot: {path}"
 
     # 2. Get System Stats
@@ -144,7 +154,7 @@ def send_home_report(**kwargs) -> str:
     
     # 4. Vocal feedback
     try:
-        from agent_skills.audio_interface.manifest import speak
+        from ..audio_interface.manifest import speak
         speak(text="Звіт надіслано, Командоре.")
     except Exception: pass
     

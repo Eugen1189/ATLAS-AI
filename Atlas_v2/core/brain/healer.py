@@ -9,24 +9,36 @@ class Healer:
     
     RECIPES = {
         "file_not_found": {
-            "patterns": [r"no such file", r"file not found", r"cannot find the path"],
+            "patterns": [r"no such file", r"file not found", r"cannot find the path", r"errno 2"],
             "suggestion": "search_and_retry"
         },
         "permission_denied": {
-            "patterns": [r"permission denied", r"access is denied"],
+            "patterns": [r"permission denied", r"access is denied", r"errno 13"],
             "suggestion": "try_elevated_or_move"
         },
         "syntax_error": {
-            "patterns": [r"syntaxerror", r"invalid syntax"],
+            "patterns": [r"syntaxerror", r"invalid syntax", r"unexpected indent"],
             "suggestion": "lint_and_fix"
         },
         "tool_not_found": {
-            "patterns": [r"tool '.*' is not registered", r"not found", r"command not found", r"is not recognized"],
+            "patterns": [r"tool '.*' is not registered", r"not found", r"command not found", r"is not recognized", r"is not a registered tool"],
             "suggestion": "incremental_scan"
         },
         "missing_argument": {
-            "patterns": [r"missing \d+ required positional argument", r"got an unexpected keyword argument", r"argument .* is required"],
+            "patterns": [r"missing \d+ required positional argument", r"got an unexpected keyword argument", r"argument .* is required", r"called with empty arguments"],
             "suggestion": "check_docs_and_abort"
+        },
+        "json_parse_error": {
+            "patterns": [r"json parsing failed", r"incomplete block", r"invalid control character", r"expecting value"],
+            "suggestion": "fix_json_format"
+        },
+        "security_rejection": {
+            "patterns": [r"security rejected", r"firewall blocked", r"dangerous command", r"access denied"],
+            "suggestion": "find_alternative_path"
+        },
+        "git_pathspec_error": {
+            "patterns": [r"pathspec '.*' did not match any file", r"is not a git command", r"unknown option"],
+            "suggestion": "fix_git_quotes_and_args"
         }
     }
 
@@ -67,10 +79,22 @@ class Healer:
         
         if error_type == "tool_not_found":
             tool = last_action.get("tool_name", "unknown")
-            return f"The tool or command '{tool}' is not currently available. I am initiating an 'incremental_scan' to update my environment data. Please try again after the scan."
+            return f"The tool or command '{tool}' is not currently available. I am initiating an 'refresh_environment_discovery' to update my environment data. Please try again after the scan."
 
         if error_type == "missing_argument":
             tool = last_action.get("tool_name", "unknown")
             return f"CRITICAL: Tool '{tool}' failed due to incorrect arguments. STOP guessing. Use 'get_tool_info' to see the exact schema before retrying. If the tool is fundamentally wrong for this task, switch to RAG search."
+
+        if error_type == "json_parse_error":
+            return "CRITICAL: Your last tool call was not valid JSON. Ensure all quotes, braces, and commas are correct. DO NOT include any text outside the JSON block. Close all open '{' and '[' blocks properly."
+
+        if error_type == "security_rejection":
+            return "🛡️ SECURITY ALERT: Your last command or path was rejected by the AXIS Firewall. DO NOT try to bypass the firewall with the same command. Instead, find a SAFER way to achieve the goal. (e.g., if 'python -c' was blocked, try writing a temporary .py file and then executing it)."
+
+        if error_type == "git_pathspec_error":
+            return "⚠️ GIT CONFIG ERROR: On Windows CMD/PowerShell, you MUST use double quotes \"...\" for git commit messages and file paths. Single quotes '...' cause 'pathspec' errors. Correct the quoting and retry."
+
+        if error_type == "unknown_anomaly" and "❌" in last_action.get("result", ""):
+            return "🔧 TECHNICAL FAILURE: The command failed. Analyze the error output, correct the logic or syntax (check paths, quotes, or missing files), and retry immediately."
 
         return "Anomaly detected. Please review logs and manually intervene."

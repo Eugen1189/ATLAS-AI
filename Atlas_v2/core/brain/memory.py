@@ -11,7 +11,7 @@ class MemoryManager:
     Prevents 'Amnesia' by storing and retrieving key project metadata.
     Now includes ReflectionEngine for episodic memory generation.
     """
-    def __init__(self, namespace="default"):
+    def __init__(self, namespace="atlas"):
         # Path: Atlas_v2/../memories/facts.json
         self.memories_dir = os.path.abspath(os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "memories"
@@ -285,4 +285,4 @@ class MemoryManager:
         threading.Thread(target=_reflection_worker).start()
 
 # Global instance for core systems
-memory_manager = MemoryManager()
+memory_manager = MemoryManager(namespace="atlas")

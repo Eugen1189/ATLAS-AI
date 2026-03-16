@@ -37,12 +37,6 @@ def listen_for_voice(**kwargs) -> str:
     except Exception as e: 
         return f"Mic Err: {e}"
 
-@agent_tool
-def voice_alert(level: str = "warning", **kwargs) -> str:
-    """Standard 2026 System Alerts: Play predefined audio notification signals."""
-    msg = "AXIS System Warning: Action Required." if level == "warning" else "Task Completed Successfully."
-    return speak(msg, speed=1.1)
-
 # --- Internal bridges for Telegram/API ---
 def transcribe_audio_file(file_path: str) -> str:
     """Non-tool function for other modules to transcribe saved files."""
@@ -74,4 +68,4 @@ def respond_with_voice(text: str, chat_id: str, bot_token: str) -> tuple[bool, s
     except Exception as e: 
         return False, str(e)
 
-EXPORTED_TOOLS = [speak, listen_for_voice, voice_alert]
+EXPORTED_TOOLS = [speak, listen_for_voice]

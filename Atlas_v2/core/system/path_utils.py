@@ -17,12 +17,13 @@ def load_environment():
 def resolve_path(path: str) -> str:
     """
     Expands home, handles Windows magic folders, and placeholders.
-    Ensures relative paths are relative to the project root.
+    Ensures relative paths are resolved absolutely.
+    If not found in root, checks one level up (sibling projects).
     """
     if not path:
         return str(get_project_root())
     
-    # Handle [Your_Username] placeholder (common in v2 blueprints)
+    # Handle [Your_Username] placeholder
     try:
         path = path.replace("[Your_Username]", os.getlogin())
     except:
@@ -43,9 +44,19 @@ def resolve_path(path: str) -> str:
             path = path.replace(word, real_path, 1)
             break
             
-    # Resolve relative to root if not absolute
     p = Path(os.path.expanduser(path))
     if not p.is_absolute():
-        p = get_project_root() / p
+        root = get_project_root()
+        # Strategy: 1. Try relative to Atlas root
+        test_path = root / p
+        if not test_path.exists():
+            # Strategy: 2. Try as a sibling to Atlas (C:/Projects/...)
+            sibling_path = root.parent / p
+            if sibling_path.exists():
+                p = sibling_path
+            else:
+                p = test_path
+        else:
+            p = test_path
         
     return str(p.resolve())

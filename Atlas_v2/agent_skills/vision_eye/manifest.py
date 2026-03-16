@@ -42,9 +42,11 @@ def capture_visual_context(**kwargs) -> str:
 
 @agent_tool
 def capture_screen_snapshot(**kwargs) -> str:
-    """Captures a screenshot of the current screen. Returns file path."""
-    result = vision_engine.capture_screen()
-    return result if "Error" not in result else f"Failed: {result}"
+    """
+    [LEGACY/ALIAS]: Captures a screenshot of the current screen. 
+    NOTE: For standard OS control, 'take_screenshot' from os_control is preferred.
+    """
+    return vision_engine.capture_screen()
 
 @agent_tool
 def analyze_visual_context(text: str = None, **kwargs) -> str:
