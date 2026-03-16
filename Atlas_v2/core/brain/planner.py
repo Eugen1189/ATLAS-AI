@@ -47,6 +47,7 @@ class Planner:
             "7. EXECUTION OVER REFLECTION: Prioritize steps that execute commands or write files over steps that just 'analyze' or 'message'.\n"
             "8. Output exactly a JSON object. No chatter.\n"
             "9. AUTONOMOUS REPAIR: If a technical error occurs (ModuleNotFoundError, git errors, path issues), the agent MUST solve it autonomously (e.g., pip install, git init, searching directories) without creating steps that ask the user for help. Do not 'message' the user about technical failures unless all autonomous attempts have failed.\n"
+            "10. SCHEMA-FIRST: You are forbidden from guessing database column names or table structures. If the task involves SQL or databases, the first database-related step MUST be to use 'get_db_schema' or 'execute_query' with a PRAGMA to verify the structure before performing any meaningful queries.\n"
             "FORMAT: {{\"plan\": [\"step 1\", \"step 2\", ...]}}"
         )
 

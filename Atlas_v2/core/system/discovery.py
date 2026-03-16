@@ -34,6 +34,9 @@ class EnvironmentDiscoverer:
         "Cursor": {"cmd": "cursor", "reg_paths": [
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Cursor",
         ]},
+        "Antigravity": {"cmd": "antigravity", "reg_paths": [
+            r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Antigravity",
+        ]},
         "PyCharm": {"cmd": "pycharm", "reg_paths": [
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\PyCharm Community Edition",
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\PyCharm Professional Edition",

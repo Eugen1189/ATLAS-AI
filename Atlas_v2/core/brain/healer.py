@@ -39,6 +39,14 @@ class Healer:
         "git_pathspec_error": {
             "patterns": [r"pathspec '.*' did not match any file", r"is not a git command", r"unknown option"],
             "suggestion": "fix_git_quotes_and_args"
+        },
+        "project_not_found": {
+            "patterns": [r"project '.*' not found", r"error: project '.*' not found"],
+            "suggestion": "list_and_verify_workspaces"
+        },
+        "sql_no_such_column": {
+            "patterns": [r"no such column", r"no such table", r"operationalerror"],
+            "suggestion": "verify_database_schema"
         }
     }
 
@@ -93,6 +101,12 @@ class Healer:
 
         if error_type == "git_pathspec_error":
             return "⚠️ GIT CONFIG ERROR: On Windows CMD/PowerShell, you MUST use double quotes \"...\" for git commit messages and file paths. Single quotes '...' cause 'pathspec' errors. Correct the quoting and retry."
+
+        if error_type == "project_not_found":
+            return "📁 WORKSPACE ERROR: The project was not found. 1) Use 'get_workspace_summary' to see tracked paths. 2) If the project is at a known path, call 'open_workspace' with the FULL ABSOLUTE PATH. 3) Check for typos (CafeAI vs Cafe AI)."
+
+        if error_type == "sql_no_such_column":
+            return "🗄️ SQL SCHEMA ERROR: You are guessing column or table names. STOP. Your next action MUST be to call 'get_db_schema' for the target database to verify the structure before retrying the query."
 
         if error_type == "unknown_anomaly" and "❌" in last_action.get("result", ""):
             return "🔧 TECHNICAL FAILURE: The command failed. Analyze the error output, correct the logic or syntax (check paths, quotes, or missing files), and retry immediately."

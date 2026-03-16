@@ -51,7 +51,9 @@ class OllamaBrain:
             "6. COMPLETION: Once the specific goal is reached, present the result and end with 'MISSION ACCOMPLISHED'.\n"
             "7. SOURCE OF TRUTH: The disk is the only source of truth for file content. If you need to know what is in a file, use 'read_file'. DO NOT rely on memory/RAG for code details.\n"
             "8. EXECUTION BIAS: Prioritize tools that change or run state (write_file, execute_command, query_database) over diagnostics (search_memory, analyze_performance).\n"
-            "9. LANGUAGE: Respond only in English or Ukrainian.\n"
+            "9. SCHEMA-FIRST: DO NOT guess database structure. Always call 'get_db_schema' before querying a new table.\n"
+            "10. NO TELEGRAM SPAM: Do not use 'send_telegram_message' for confirming technical steps or reporting every error. Solve technical issues autonomously via the Healer loop. Use Telegram ONLY for the final mission report or critical HITL blockers.\n"
+            "11. LANGUAGE: Respond only in English or Ukrainian.\n"
         )
         
         self.history = [{"role": "system", "content": self.system_prompt}]
