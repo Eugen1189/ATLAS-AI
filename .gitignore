@@ -66,3 +66,8 @@ response_audio.mp3
 /audio_output/
 last_action.json
 vision_*.png
+*.db
+/database/
+/tmp/
+/READY.txt
+/error.log

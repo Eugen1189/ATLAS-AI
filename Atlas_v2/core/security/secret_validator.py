@@ -46,6 +46,11 @@ class SecretValidator:
             "pattern": r"^gh[ps]_[A-Za-z0-9]{36,}$",
             "required_for": None,  # Optional
         },
+        "Context7": {
+            "env": "CONTEXT7_API_KEY",
+            "pattern": r"^[A-Za-z0-9_-]{20,}$",
+            "required_for": None,  # Optional for now, but used by MCP Hub
+        },
     }
 
     @classmethod

@@ -136,6 +136,29 @@ class MemoryManager:
         """Returns a list of tuples (key, data) sorted by timestamp."""
         return sorted(self.facts.items(), key=lambda x: x[1].get("timestamp", ""), reverse=True)[:limit]
 
+    def document_fix(self, error: str, resolution: str, context: str = ""):
+        """
+        [PROTOCOL 2.0] Autonomous learning. 
+        Stores a successful fix for a specific error in the vector database.
+        """
+        if not self.vector_store:
+            return
+            
+        try:
+            doc_text = f"### SUCCESSFUL FIX\nERROR: {error}\nCONTEXT: {context}\nRESOLUTION: {resolution}"
+            self.vector_store.upsert_documents([{
+                "text": doc_text,
+                "source": "autonomous_fix",
+                "metadata": {
+                    "type": "fix",
+                    "error_snippet": error[:100],
+                    "timestamp": str(datetime.now())
+                }
+            }], category="knowledge")
+            logger.info("memory.fix_documented", error=error[:50])
+        except Exception as e:
+            logger.warning("memory.fix_document_failed", error=str(e))
+
     # ==========================================
     # --- NEW: REFLECTION ENGINE (v2.8.0) ---
     # ==========================================
@@ -198,6 +221,21 @@ class MemoryManager:
             logger.debug("memory.cache_stored", query=query[:30])
         except Exception as e:
             logger.warning("memory.cache_store_failed", error=str(e))
+
+    def reset_all_memory(self):
+        """Wipes ALL factual and RAG memory for the current namespace (v3.6.6)."""
+        logger.warning("memory.reset_started", namespace=self.namespace)
+        
+        # 1. Clear Facts JSON
+        self.facts = {}
+        self._save_facts()
+        
+        # 2. Purge Vector DB
+        if self.vector_store:
+            self.vector_store.purge_all()
+            
+        logger.info("memory.reset_complete", namespace=self.namespace)
+        return True
 
     def reflect_on_session(self, session_history: list):
         """

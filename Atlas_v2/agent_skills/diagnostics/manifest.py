@@ -31,8 +31,7 @@ def analyze_performance(**kwargs) -> str:
 
 @agent_tool
 def deep_system_scan(**kwargs):
-    """
-    Збирає детальну інформацію про залізо, ОС та використання ресурсів.
+    """Збирає детальну інформацію про залізо, ОС та використання ресурсів.
     Включає хак для правильного визначення Windows 11.
     """
     uname = platform.uname()
@@ -44,7 +43,7 @@ def deep_system_scan(**kwargs):
         build_num = sys.getwindowsversion().build
         if build_num >= 22000:
             os_release = "11"  # Примусово ставимо 11, якщо збірка нова
-
+    
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage(os.path.abspath(os.sep))
     

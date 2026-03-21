@@ -9,6 +9,7 @@ def apply_mocks():
         'pyaudio': MagicMock(), 'pvporcupine': MagicMock(), 'faster_whisper': MagicMock(),
         'openai': MagicMock(), 'pygame': MagicMock(), 'pygame.mixer': MagicMock(),
         'mcp': MagicMock(), 'mcp.client': MagicMock(), 'mcp.client.stdio': MagicMock(),
+        'mcp.server': MagicMock(), 'mcp.types': MagicMock(),
         'nest_asyncio': MagicMock(), 'google.generativeai': MagicMock(), 'google.genai': MagicMock(),
         'flet': MagicMock(), 'pystray': MagicMock()
     }
@@ -68,7 +69,7 @@ class TestMcpBridge(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.bridge.exit_stack.aclose.called)
 
     def test_mcp_manifest_functions(self):
-        from agent_skills.mcp_hub.manifest import send_to_mcp_sync
+        from agent_skills.mcp_hub.manifest import call_mcp_tool
         from core.i18n import lang
         
         # Test not connected
@@ -77,28 +78,25 @@ class TestMcpBridge(unittest.IsolatedAsyncioTestCase):
             mock_bridge.sessions = {}
             mock_get_bridge.return_value = mock_bridge
             
-            res = send_to_mcp_sync("bad_server", "tool", {})
-            self.assertEqual(res, lang.get("mcp.conn_failed", name="bad_server", error="Not Connected"))
+            res = call_mcp_tool("bad_server", "tool", {})
+            self.assertIn("Error: MCP Server 'bad_server' not active.", res)
             
-        # Test valid connection via normal branch
+        # Test valid connection
         with patch('agent_skills.mcp_hub.manifest.get_bridge') as mock_get_bridge:
-            mock_session = AsyncMock()
-            mock_session.call_tool.return_value = "Success"
-            
             mock_bridge = MagicMock()
-            mock_bridge.sessions = {"test_server": mock_session}
+            mock_bridge.sessions = {"test_server": "active"}
+            
+            # Create a real awaitable mock
+            async def mock_call_tool(s, t, a): return "Success"
+            mock_bridge.call_tool = mock_call_tool
             mock_get_bridge.return_value = mock_bridge
             
             with patch('asyncio.get_event_loop') as mock_loop:
-                # We mock ensure_future and run_until_complete to resolve our AsyncMock
-                mock_loop.return_value.is_running.return_value = False
-                mock_loop.return_value.run_until_complete.side_effect = lambda coro: coro.send(None)
+                # Mock run_until_complete to return our value since nest_asyncio is mocked
+                mock_loop.return_value.run_until_complete.side_effect = lambda coro: "Success"
                 
-                try: 
-                    # send() on coroutine usually raises StopIteration(val) when done
-                    send_to_mcp_sync("test_server", "tool", {}) 
-                except StopIteration:
-                    pass
+                res = call_mcp_tool("test_server", "tool", {}) 
+                self.assertEqual(res, "Success")
 
 if __name__ == "__main__":
     unittest.main()

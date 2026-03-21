@@ -26,6 +26,7 @@ This document serves as the primary "constitution" for AI agents (AXIS, Claude, 
 ### 2. Tool Calls
 - All tool definitions must include Google-style docstrings (crucial for Ollama manifest generation).
 - All tool functions must support `**kwargs` to remain resilient against hallucinated LLM arguments.
+- **Discovery-First Architecture**: BEFORE calling unknown or external tools (MCP), the agent MUST call `list_server_tools` to verify signatures. Use `search_web` for missing documentation.
 - Use `structlog` for all logging. **NO `print()` statements allowed.**
 
 ---
@@ -34,7 +35,7 @@ This document serves as the primary "constitution" for AI agents (AXIS, Claude, 
 
 ### 1. The Firewall & Security Guard
 - Destructive commands (format, rm -rf /, etc.) are blocked at the code level.
-- Access to `.env` and `.git` is restricted even for the agent.
+- **Firewall Cooperation**: Access to `.env` and `.git` is restricted. If a tool call is blocked by `security.blacklist_blocked`, the agent MUST adapt by using templates (`.env.example`) or requesting specific permission, NEVER by silently skipping.
 
 ### 2. Self-Healing: The [CRITICAL SYSTEM DIRECTIVE]
 To prevent LLM deadlocks (waiting for external fix), the system implements an autonomous self-correction loop.
@@ -60,6 +61,8 @@ To prevent LLM deadlocks (waiting for external fix), the system implements an au
 ## 🛡️ Anti-Looping & Protection
 - **Infinite Loop Prevention**: If a tool fails more than twice with the same or similar arguments, AXIS must STOP and request Human-In-The-Loop (HITL) clarification.
 - **Argument Mapping**: When in doubt about argument names, always use `path` for file-related tasks and `text` for strings/prompts.
+- **Zero-Placeholder Policy**: Agents are strictly forbidden from using `[Insert Here]`, `TODO`, or placeholders in code. All output must be PRODUCTION READY.
+- **Evidence-Based Completion**: "MISSION ACCOMPLISHED" must only be reported if backed by successful tool execution and/or test results (`pytest`/`verify_code`).
 - **Fail-Fast**: If `parser_healer` (Healer 2.0) is triggered twice on the same step, abort current plan and ask the user for help.
 
 ---

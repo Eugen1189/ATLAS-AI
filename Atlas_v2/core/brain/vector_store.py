@@ -98,6 +98,26 @@ class VectorStore:
             logger.error("rag.cache_purge_error", error=str(e))
         return 0
 
+    def purge_all(self):
+        """Wipes ALL collections in the current namespace (v3.6.6)."""
+        if not self.client: return False
+        try:
+            for coll in ["axis_knowledge", "axis_session", "axis_cache"]:
+                try:
+                    self.client.delete_collection(coll)
+                except: pass
+            
+            # Re-initialize
+            self.knowledge = self.client.create_collection(name="axis_knowledge", metadata={"hnsw:space": "cosine"})
+            self.session   = self.client.create_collection(name="axis_session",   metadata={"hnsw:space": "cosine"})
+            self.cache     = self.client.create_collection(name="axis_cache",     metadata={"hnsw:space": "cosine"})
+            
+            logger.info("rag.total_purge_complete")
+            return True
+        except Exception as e:
+            logger.error("rag.total_purge_failed", error=str(e))
+            return False
+
     @property
     def is_available(self) -> bool:
         return self.knowledge is not None

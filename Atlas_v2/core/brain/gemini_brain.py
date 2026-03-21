@@ -1,5 +1,6 @@
 import os
 import google.generativeai as genai
+from core.logger import logger
 from .base import BaseBrain
 
 
@@ -10,13 +11,13 @@ class GeminiBrain(BaseBrain):
         self.model = None
         self.chat_session = None
 
-    def initialize(self, available_tools: list, tool_index: dict = None):
+    def initialize(self, available_tools: list, tool_index: dict = None, workspace_root: str = None):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             return False
             
         # Use shared initialization logic
-        super().initialize(available_tools, tool_index=tool_index)
+        super().initialize(available_tools, tool_index=tool_index, workspace_root=workspace_root)
 
         genai.configure(api_key=api_key)
         
@@ -44,6 +45,14 @@ class GeminiBrain(BaseBrain):
             enable_automatic_function_calling=True
         )
         return True
+
+    def reset_history(self):
+        if self.model:
+            self.chat_session = self.model.start_chat(
+                history=[], 
+                enable_automatic_function_calling=True
+            )
+            logger.debug("gemini.history_reset")
 
     def think(self, user_input: str) -> str:
         if not self.chat_session:

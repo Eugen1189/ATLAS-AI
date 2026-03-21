@@ -132,6 +132,25 @@ class MCPBridge:
             logger.error("mcp.call_failed", server=server_name, tool=tool_name, error=str(e))
             return f"MCP Call Error: {str(e)}"
 
+    async def list_tools_for_server(self, server_name: str) -> str:
+        """Lists all tools for a specific MCP server"""
+        if server_name not in self.sessions:
+            return f"Error: MCP Server '{server_name}' not active."
+        session = self.sessions[server_name]
+        try:
+            if server_name == "internal":
+                return f"Internal tools: {list(session.tools.keys())}"
+            
+            # External MCP 2026 standard discovery
+            tools = await session.list_tools()
+            output = [f"### Tools for {server_name}:"]
+            for t in tools.tools:
+                output.append(f"- {t.name}: {t.description}")
+            return "\n".join(output)
+        except Exception as e:
+            logger.error("mcp.discovery_failed", server=server_name, error=str(e))
+            return f"Discovery Error: {str(e)}"
+
     async def shutdown(self):
         """Close all MCP connections"""
         await self.exit_stack.aclose()

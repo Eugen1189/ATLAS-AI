@@ -34,7 +34,7 @@ def refactor_code(path: str, instructions: str, new_code: str, **kwargs) -> str:
     )
     
     # 3. Human-In-The-Loop (HITL)
-    confirmed = ask_user_confirmation(prompt=proposal_summary)
+    confirmed = ask_user_confirmation(text=proposal_summary)
     
     if not confirmed:
         return "❌ [REFUSED]: Commander rejected the refactoring proposal."

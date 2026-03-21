@@ -38,5 +38,20 @@ def forget_topic(topic: str, **kwargs) -> str:
         return f"🗑️ [PURGED]: '{topic}'"
     except Exception as e: return f"Err: {e}"
 
-EXPORTED_TOOLS = [save_to_memory, search_memory, get_memory_stats, forget_topic]
+@agent_tool
+def reset_memory(confirm: bool = False, **kwargs) -> str:
+    """
+    [CRITICAL] Wipes ALL long-term memory (facts, code index, cache).
+    Requires 'confirm=True' to prevent accidental deletion.
+    """
+    if not confirm:
+        return "⚠️ [WARNING]: This will PERMANENTLY delete all project memory. Pass 'confirm=True' to proceed."
+    
+    try:
+        memory_manager.reset_all_memory()
+        return "🔥 [SYSTEM]: ALL MEMORY PURGED. AXIS is now a blank slate for this project."
+    except Exception as e:
+        return f"❌ [ERROR]: Memory reset failed: {e}"
+
+EXPORTED_TOOLS = [save_to_memory, search_memory, get_memory_stats, forget_topic, reset_memory]
 

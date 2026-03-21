@@ -4,8 +4,22 @@ from dotenv import load_dotenv
 
 def get_project_root() -> Path:
     """Returns the absolute path to the project root (where .env and Atlas_v2 live)."""
-    # Assuming this file is in Atlas_v2/core/system/path_utils.py
+    # [ROBUST v3.6.0] Upward search for markers
+    current_file = Path(__file__).resolve()
+    for parent in [current_file] + list(current_file.parents):
+        if (parent / ".env").exists() or (parent / "Atlas_v2").exists() or (parent / ".git").exists():
+            return parent
+    
+    # Fallback: assume standard structure
     return Path(__file__).parent.parent.parent.parent.resolve()
+
+def get_namespace_for_path(path: str) -> str:
+    """Creates a unique, reproducible namespace for a directory path (v3.5.0)."""
+    import hashlib
+    abs_path = os.path.abspath(path).lower()
+    path_hash = hashlib.sha256(abs_path.encode()).hexdigest()[:8]
+    folder_name = os.path.basename(abs_path)
+    return f"{folder_name}_{path_hash}"
 
 def load_environment():
     """Ensures .env is loaded from the project root."""
@@ -13,6 +27,9 @@ def load_environment():
     env_path = root / ".env"
     if env_path.exists():
         load_dotenv(dotenv_path=str(env_path))
+    
+    # [FORCE UTF-8] (v3.5.0)
+    os.environ["PYTHONIOENCODING"] = "utf-8"
 
 def resolve_path(path: str) -> str:
     """
@@ -49,10 +66,12 @@ def resolve_path(path: str) -> str:
         root = get_project_root()
         # Strategy: 1. Try relative to Atlas root
         test_path = root / p
+        
+        # Strategy: 2. Sibling project lookup (RESTRICTED - only if exists)
+        # Avoid guessing new projects here.
         if not test_path.exists():
-            # Strategy: 2. Try as a sibling to Atlas (C:/Projects/...)
             sibling_path = root.parent / p
-            if sibling_path.exists():
+            if sibling_path.exists() and os.path.isdir(sibling_path):
                 p = sibling_path
             else:
                 p = test_path

@@ -1,76 +1,135 @@
-# 🌌 AXIS v5.5 "Bunker" - Autonomous Spatial AI Framework
+<div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-5.5--Bunker-blue.svg)]()
-[![Core](https://img.shields.io/badge/Core-Local--First-green.svg)]()
+![AXIS Banner](assets/banner.png)
 
-**AXIS** (Autonomous eXtended Intelligence System) is a high-performance, local-first AI agent designed for advanced OS interaction. Built for extreme reliability via **Bunker v5.5 Security Protocol**.
+# 🌐 AXIS v2.7 — Autonomous Operations Framework
 
----
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Architecture](https://img.shields.io/badge/Arch-Dual--Brain-blueviolet.svg?style=for-the-badge)](https://github.com/Eugen1189/ATLAS-AI)
+[![Status](https://img.shields.io/badge/Status-Beta--2.7-orange.svg?style=for-the-badge)]()
+[![Security](https://img.shields.io/badge/Security-Bunker_v5.5-red.svg?style=for-the-badge)](AGENTS.md)
 
-## 🏛️ Pure Architecture & Inheritance
-Starting with v2.7.19, AXIS implements a unified brain inheritance model:
-*   **BaseBrain**: Centralized core for Blueprint loading, RAG initialization, and Memory management.
-*   **OllamaBrain**: Local execution optimized for Qwen2.5-Coder.
-*   **GeminiBrain**: High-reasoning cloud fallback.
-*   **Unified Vision**: A centralized `VisionEngine` singleton prevents camera/screen access conflicts across processes.
+**AXIS** (Autonomous Spatial Intelligence & MCP Framework) is a high-autonomy agentic system designed for **Autonomous Engineering**. Unlike traditional LLM wrappers, AXIS is built to pursue complex goals, self-heal from technical errors, and operate within a secured, path-aware environment.
 
----
+[Features](#-key-features) • [Architecture](#-system-architecture) • [Getting Started](#-quick-start) • [Roadmap](#-roadmap-2026)
 
-## 🛠️ Key Technologies 2026
-
-*   **Brain**: [Ollama](https://ollama.ai/) running **Qwen2.5-Coder:7b**.
-*   **Security**: Aggressive JSON repair + Command Firewall.
-*   **Audio**: Single-pass calibration for instant voice responsiveness.
-*   **Vision**: Regional high-res analysis via `VisionEngine`.
+</div>
 
 ---
 
-## 🦾 Core Modules
+## 🏗️ System Architecture
 
-### 📂 FileMaster (Smart Navigation)
-Intelligent filesystem access with support for "magic" keywords (`Desktop`, `Documents`, `~`). Can physically open files/folders (`open_item`) like a real user.
+AXIS operates on a **Dual-Brain Topology**, separating high-level strategy (Planner) from low-level technical execution (Executor). This ensures maximum reliability and safety through structured JSON reasoning.
 
-### 💻 Terminal Operator
-Secure PowerShell/CMD execution with a built-in **Command Firewall**. Prevents destructive actions (format, recursive deletion of system files) while returning rich feedback to the LLM.
+```mermaid
+graph TD
+    User([👤 User Request]) --> Planner[🧠 Planner: Gemini 2.0 Pro]
+    Planner -->|Multi-step JSON Plan| Executor[⚙️ Executor: Local Ollama]
+    
+    subgraph "Execution Shield (Bunker v5.5)"
+        Executor -->|Call Tool| MCP[📨 MCP Hub: Systems/Tools]
+        MCP -->|Result Check| Healer{🛡️ Protocol 2.0}
+        
+        Healer -- "Success (✅)" --> Next[🚀 Next Atomic Step]
+        Healer -- "Error (❌ / 🚨)" --> Repair[🩹 Healer: Auto-Fix Loop]
+        Repair -->|Corrected Params| Executor
+    end
+    
+    Next -.->|Final Report| User
+```
 
-### 🔍 Deep System Diagnostics
-Real-time hardware monitoring (CPU, RAM, Disk) with accurate Windows 11 detection (build-aware detection protocol).
-
-### 🛰️ Web Research (Advanced Analyst)
-Deep multi-step research using Perplexity-style synthesis and recursive web scraping.
+### 🧠 Dual-Brain Reasoning
+| Layer | Engine | Primary Function |
+| :--- | :--- | :--- |
+| **Mission Planner** | Gemini 2.0 Flash | Strategic decomposition of abstract goals into actionable multi-step JSON sequences. |
+| **Atomic Executor** | Qwen2.5-Coder (Local) | Precision tool interaction, context management, and immediate state validation. |
 
 ---
 
-## 📅 ROADMAP 2026
-*   **Wait-Word 2.0** - Instant-start audio capture [COMPLETED].
-*   **Pure Architecture** - Elimination of dead code and redundant logic [COMPLETED].
-*   **Q2: Multi-Agent Protocol** - Collaboration between Skill-Shards.
+## 🛡️ Protocol 2.0: The Immune System
+
+One of the most powerful features of AXIS is its **Self-Healing Core**. Instead of reporting failure when a task hits an environmental roadblock (missing libraries, OS permission errors, syntax mistakes), AXIS enters an autonomous repair loop.
+
+- **Dynamic Discovery**: Auto-detects IDEs, workspaces, and system tools.
+- **Auto-Fix Directives**: Monitors `stderr` for `[CRITICAL SYSTEM DIRECTIVE]` flags to trigger immediate intervention.
+- **Scoped Trust**: Dynamically configures directory permissions to isolate risky operations.
 
 ---
 
-## 🚀 Setup
+## ✨ Key Features
 
-1.  **Dependencies** (Cleaned for v2.7.20):
+- **🚀 Mission-Driven Autonomy**: Handles complex, open-ended tasks without constant human intervention.
+- **📨 MCP Integration**: Built-in support for **Model Context Protocol**, allowing hot-swapping of capabilities and cross-server communication.
+- **👁️ Spatial & Visual Awareness**: Real-time telemetry, HUD visualization (PyQt6), and computer vision (Mediapipe/OpenCV) for GUI interaction.
+- **🔌 Isolated Agent Skills**: Extend system capabilities via a modular "Skill Directory" pattern.
+- **🛠️ Self-Provisioning**: Automatically manages its own environment (virtualenvs, dependencies) when needed.
+
+---
+
+## 🛠️ Technological Stack
+
+- **Core Engine**: Python 3.11+ (Strict typing, Structlog)
+- **RAG & Memory**: ChromaDB (Vector Search)
+- **Communication**: MCP Server Protocol (Filesystem, GitHub, Terminal)
+- **Local Processing**: Ollama (Qwen2.5-Coder / Llama3)
+- **Interface**: PyQt6 (Head-Up Display) & Telegram (Remote Operations)
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- [Python 3.11+](https://www.python.org/downloads/)
+- [Ollama](https://ollama.ai/) (Running locally for Executor logic)
+- [Gemini API Key](https://aistudio.google.com/app/apikey) (For Planning logic)
+
+### Installation
+1.  **Clone the Repository**
     ```bash
+    git clone https://github.com/Eugen1189/ATLAS-AI.git
+    cd ATLAS-AI
+    ```
+
+2.  **Environment Setup**
+    ```bash
+    # Create and activate venv
+    python -m venv venv
+    .\venv\Scripts\activate  # On Windows
+
+    # Install dependencies
     pip install -e .
     ```
-2.  **Environment**: Update `.env` (Ollama, Gemini, Telegram tokens).
-3.  **Run**: `python Atlas_v2/main.py`
+
+3.  **Configuration**
+    Copy `.env.example` to `.env` and configure your API keys.
+
+4.  **Launch AXIS**
+    ```bash
+    python Atlas_v2/main.py
+    ```
 
 ---
 
-## 🛡️ "Ironclad" Reliability System
-1.  **The Parser**: Intercepts teacher-hallucinations and repairs malformed JSON.
-2.  **The Wrapper**: Every `@agent_tool` is functionally isolated.
-3.  **The Firewall**: Blocks destructive OS commands via regex protection.
+## 🗺️ Roadmap 2026
+
+- [x] **v2.5: Context Mastery** - Robust path-awareness and cross-project navigation.
+- [x] **v2.7: Autonomous Engineering** - Protocol 2.0 self-healing integration.
+- [ ] **v3.0: Cognitive Hardening** - Implementation of Agentic Graph Memory for long-term facts.
+- [ ] **v3.5: Sandboxed Eco-Systems** - Full containerization of executor environments for zero-risk production edits.
 
 ---
 
-## 📱 Remote Control (Telegram)
-Control your PC from anywhere. AXIS sends screenshots, hardware reports, and asks for confirmations before critical operations.
+## 📜 Project Constitution
+
+All development on AXIS follows the **AXIS Project Constitution**. Refer to the following documents for deep-dives into operational logic:
+
+- 🤖 [AGENTS.md](AGENTS.md) — Core technical standards and security protocols.
+- 🛠️ [CLAUDE.md](CLAUDE.md) — Practical integration guidelines and build instructions.
+- 🔭 [PROJECT_SNAPSHOT.md](PROJECT_SNAPSHOT.md) — Detailed technical architecture and roadmap.
 
 ---
 
-## 📜 License
-MIT License. Created by Eugen1189.
+<div align="center">
+    <i>Created as part of the 2026 AI Autonomous Standard Integration.</i><br>
+    <b>Empowering the future of Autonomous Engineering.</b>
+</div>

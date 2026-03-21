@@ -52,6 +52,8 @@ def google_research(query: str, **kwargs) -> str:
     """Performs a quick search in Google and returns a list of relevant URLs."""
     from .google_logic import google_research as _core_search
     res = _core_search(query, **kwargs)
+    if not res or "No results found." in str(res):
+         return json.dumps({"status": "no_results", "message": f"Zero results for '{query}'. BROADEN your search. Avoid specific acronyms like 'MCP' or 'Vision' if too restrictive. Try again with a higher-level query."}, ensure_ascii=False)
     return json.dumps({"status": "success", "content": res}, ensure_ascii=False)
 
 @agent_tool

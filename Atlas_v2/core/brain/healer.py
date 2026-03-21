@@ -18,7 +18,7 @@ class Healer:
         },
         "syntax_error": {
             "patterns": [r"syntaxerror", r"invalid syntax", r"unexpected indent"],
-            "suggestion": "lint_and_fix"
+            "suggestion": "lint_and_overwrite"
         },
         "tool_not_found": {
             "patterns": [r"tool '.*' is not registered", r"not found", r"command not found", r"is not recognized", r"is not a registered tool"],
@@ -82,7 +82,7 @@ class Healer:
     def propose_fix(self, error_type: str, last_action: dict):
         """Формує нову стратегію виправлення"""
         if error_type == "file_not_found":
-            target = last_action.get("arguments", {}).get("filepath", "unknown")
+            target = last_action.get("arguments", {}).get("path", "unknown")
             return f"The file '{target}' was not found. Use 'list_directory' to find the correct path and try again."
         
         if error_type == "tool_not_found":

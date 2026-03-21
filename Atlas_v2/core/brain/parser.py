@@ -135,7 +135,9 @@ def _normalize_tool_call(data: dict) -> dict | None:
     """Standardizes different tool call naming conventions into a single format."""
     tool_name = (
         data.get("tool_name") or 
+        data.get("tool_code") or 
         data.get("command") or 
+        data.get("command_name") or 
         data.get("name") or 
         data.get("tool") or 
         data.get("action") or

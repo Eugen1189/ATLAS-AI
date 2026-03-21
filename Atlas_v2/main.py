@@ -16,10 +16,13 @@ os.environ["NUMEXPR_NUM_THREADS"] = "4"
 # [BUNKER v5.5] UTF-8 Forced Encoding for Windows Terminals
 if os.name == 'nt':
     import io
-    os.system('chcp 65001 > nul')
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+    try:
+        os.system('chcp 65001 > nul')
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
+    except:
+        pass
 
 
 # Встановлюємо шляхи для імпортів
@@ -27,7 +30,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.orchestrator import AxisCore
-from agent_skills.audio_interface.listener import start_voice_listener
+# [V3.6.6 CLEANUP] Removed legacy/bloat imports (Voice, Vision, Sentinel)
+# from agent_skills.audio_interface.listener import start_voice_listener
 
 from core.i18n import lang
 from agent_skills.telegram_bridge.listener import start_telegram_listener
@@ -158,8 +162,8 @@ if __name__ == "__main__":
         # 🛡️ TELEMETRY BOOT: Autonomous system monitoring
         start_telemetry_daemon()
         
-        # 🎙️ VOICE BOOT: Using specific hardware index for MT-MC14
-        start_voice_listener(axis, device_index=1)
+        # 🎙️ [V3.6.6 CLEANUP] Voice boot disabled for minimalism
+        # start_voice_listener(axis, device_index=1)
         
         # Запускаємо цикл вводу
         run_terminal_loop(axis)
