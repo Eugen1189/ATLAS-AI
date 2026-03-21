@@ -13,16 +13,18 @@ os.environ["OPENBLAS_NUM_THREADS"] = "4"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 os.environ["NUMEXPR_NUM_THREADS"] = "4"
 
-# [BUNKER v5.5] UTF-8 Forced Encoding for Windows Terminals
-if os.name == 'nt':
-    import io
-    try:
-        os.system('chcp 65001 > nul')
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
-    except:
-        pass
+def force_utf8():
+    """Forces UTF-8 encoding on Windows terminals to prevent Unicode errors (v3.5.0)."""
+    if os.name == 'nt':
+        import io
+        try:
+            # Re-wrap streams with UTF-8 encoding
+            os.system('chcp 65001 > nul')
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+            sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
+        except:
+            pass
 
 
 # Встановлюємо шляхи для імпортів
@@ -139,6 +141,7 @@ def run_terminal_loop(axis):
             safe_print(lang.get("system.sys_error", error=e))
 
 if __name__ == "__main__":
+    force_utf8() # Force UTF-8 only on direct execution
     cleanup_zombie_processes()
     safe_print("Booting AXIS V3.2.8 (Universal Core - Validation Layer)...")
     
