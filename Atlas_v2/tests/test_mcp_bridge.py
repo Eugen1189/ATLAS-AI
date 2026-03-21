@@ -8,8 +8,6 @@ def apply_mocks():
         'cv2': MagicMock(), 'mediapipe': MagicMock(), 'pyautogui': mock_pyautogui,
         'pyaudio': MagicMock(), 'pvporcupine': MagicMock(), 'faster_whisper': MagicMock(),
         'openai': MagicMock(), 'pygame': MagicMock(), 'pygame.mixer': MagicMock(),
-        'mcp': MagicMock(), 'mcp.client': MagicMock(), 'mcp.client.stdio': MagicMock(),
-        'mcp.server': MagicMock(), 'mcp.types': MagicMock(),
         'nest_asyncio': MagicMock(), 'google.generativeai': MagicMock(), 'google.genai': MagicMock(),
         'flet': MagicMock(), 'pystray': MagicMock()
     }

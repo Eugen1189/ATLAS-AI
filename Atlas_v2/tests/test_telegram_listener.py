@@ -107,6 +107,7 @@ class TestTelegramListener(unittest.TestCase):
             # 3. Confirmation error
             mock_post.side_effect = None
             mock_post.return_value.status_code = 500
+            mock_post.return_value.json.return_value = {} # Ensure msg_id is None
             ask_user_confirmation("Are you sure?")
             
             mock_post.side_effect = Exception("Confirm Error")

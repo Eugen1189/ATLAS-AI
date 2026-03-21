@@ -6,12 +6,13 @@ def get_project_root() -> Path:
     """Returns the absolute path to the project root (where .env and Atlas_v2 live)."""
     # [ROBUST v3.6.0] Upward search for markers
     current_file = Path(__file__).resolve()
-    for parent in [current_file] + list(current_file.parents):
-        if (parent / ".env").exists() or (parent / "Atlas_v2").exists() or (parent / ".git").exists():
+    # Start looking from the parent directory of this file
+    for parent in current_file.parents:
+        if parent.is_dir() and ((parent / ".env").exists() or (parent / "Atlas_v2").exists() or (parent / ".git").exists()):
             return parent
     
-    # Fallback: assume standard structure
-    return Path(__file__).parent.parent.parent.parent.resolve()
+    # Fallback: assume standard structure or CWD
+    return Path(os.getcwd()).resolve()
 
 def get_namespace_for_path(path: str) -> str:
     """Creates a unique, reproducible namespace for a directory path (v3.5.0)."""

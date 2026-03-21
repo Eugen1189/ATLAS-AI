@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 import sys
 
 # Mock modules that main depends on
-sys.modules['agent_skills.audio_interface.listener'] = MagicMock()
 sys.modules['agent_skills.telegram_bridge.listener'] = MagicMock()
 sys.modules['google.generativeai'] = MagicMock()
 
