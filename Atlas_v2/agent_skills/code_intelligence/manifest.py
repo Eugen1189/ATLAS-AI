@@ -14,6 +14,9 @@ def refactor_code(path: str, instructions: str, new_code: str, **kwargs) -> str:
     1. Analyzes file and project context via RAG.
     2. Requires Commander's confirmation via Telegram with a preview.
     """
+    if not path.lower().endswith(".py"):
+        return f"❌ [REFACTOR REJECTED]: File '{path}' is not a Python file. 'refactor_code' uses Ruff and Pytest for verification, which ONLY support .py files. For HTML, JS, CSS, or MD, you MUST use 'replace_file_content' or 'write_file' instead."
+
     # 1. Gather Context
     current_content = read_file(path)
     if "Error" in current_content:
@@ -83,6 +86,9 @@ def verify_code(filepath: str, **kwargs) -> str:
     """
     Manual Verification Tool: Runs Ruff and Pytest on an existing file to check for regressions.
     """
+    if not filepath.lower().endswith(".py"):
+        return f"❌ [VERIFY REJECTED]: File '{filepath}' is not a Python file. Verification (Ruff/Pytest) is only available for .py files."
+
     logger.info("code_intelligence.manual_verify", path=filepath)
     ruff_res = subprocess.run(f"ruff check {filepath}", shell=True, capture_output=True, text=True)
     
@@ -142,6 +148,10 @@ def apply_ast_patch(path: str, target_name: str, new_code: str, **kwargs) -> str
     import re
     if not os.path.exists(path):
         return f"❌ [PATCH]: File not found: {path}."
+        
+    # [v3.8.11] Extension Guard: Prevent blind AST on non-Python files
+    if not path.lower().endswith(".py"):
+        return f"❌ [PATCH REJECTED]: File '{path}' is not a Python file. AST manipulation (apply_ast_patch) ONLY supports .py files. For .md, .sql, .json or .txt, you MUST use 'write_file' or 'append_to_file' instead."
         
     try:
         # 1. Verification Preview

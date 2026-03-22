@@ -12,7 +12,17 @@ def list_directory(path: str, **kwargs) -> str:
     path = resolve_path(path)
 
     try:
-        if not os.path.exists(path): return lang.get("file_master.dir_not_found", path=path)
+        if not os.path.exists(path): 
+            parent = os.path.dirname(path) or "."
+            hint = ""
+            if os.path.exists(parent):
+                items = os.listdir(parent)[:15]
+                hint = f"\n🔍 [PATH HINT]: '{path}' not found. Parent folder '{parent}' contains: {', '.join(items)}..."
+            return f"❌ [ERROR]: Directory '{path}' not found.{hint}"
+            
+        if os.path.isfile(path):
+            return f"❌ [ERROR]: '{path}' is a FILE, not a directory. Use 'read_file' to view its content."
+            
         items = os.listdir(path)
         result = f"### Directory: {path}\n"
         for item in sorted(items):
@@ -22,7 +32,7 @@ def list_directory(path: str, **kwargs) -> str:
                 size = os.path.getsize(item_path)
                 result += f"📄 {item} ({size} bytes)\n"
         return result
-    except Exception as e: return lang.get("file_master.read_error", error=e)
+    except Exception as e: return f"Read Error: {e}"
 
 @agent_tool
 def open_item(path: str, **kwargs) -> str:
@@ -67,13 +77,22 @@ def read_file(path: str, **kwargs) -> str:
     path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
     try:
-        if not os.path.exists(path): return lang.get("file_master.file_not_found", path=path)
+        if not os.path.exists(path):
+            parent = os.path.dirname(path) or "."
+            hint = ""
+            if os.path.exists(parent):
+                items = os.listdir(parent)[:15]
+                hint = f"\n🔍 [PATH HINT]: File '{path}' missing. Actual contents of '{parent}': {', '.join(items)}..."
+            return f"❌ [ERROR]: File not found: {path}.{hint}"
+            
+        if os.path.isdir(path):
+            return f"❌ [ERROR]: '{path}' is a DIRECTORY. You cannot 'read_file' on a folder. Use 'list_directory' to see its contents."
+            
         size = os.path.getsize(path)
         if size > 150000: return f"⚠️ File {path} too large ({size}b). Use search_text_in_files."
         with open(path, 'r', encoding='utf-8') as f: content = f.read()
         return f"--- ABSOLUTE PATH: {path} ---\n{content}\n--- End ---"
     except UnicodeDecodeError:
-        # Fallback with replacement only if UTF-8 strictly fails
         with open(path, 'r', encoding='utf-8', errors='replace') as f: content = f.read()
         return f"--- ABSOLUTE PATH: {path} (Encoding Warning: Non UTF-8 chars replaced) ---\n{content}\n--- End ---"
     except Exception as e: return f"Read Error: {e}"
@@ -130,23 +149,38 @@ def delete_file(path: str = None, **kwargs) -> str:
 
 @agent_tool
 def search_text_in_files(query: str, root_path: str = None, **kwargs) -> str:
-    """Project-wide 'grep' for finding text or code patterns."""
+    """
+    Project-wide 'grep' for finding text or code patterns. 
+    Supports MULTI-QUERY: Separate keywords with commas (e.g., 'finance, security') for OR-search.
+    """
     root_path = root_path or kwargs.get('path') or kwargs.get('file_path') or "."
     root_path = resolve_path(root_path)
+    
+    # [v3.8.10] Smart Multi-Query Parsing
+    import re
+    keywords = [k.strip() for k in re.split(r'[,;]', query) if k.strip()]
+    if not keywords: keywords = [query]
+
     matches = []
     for root, dirs, files in os.walk(root_path):
-        dirs[:] = [d for d in dirs if d not in {".git", "venv", "node_modules"}]
+        dirs[:] = [d for d in dirs if d not in {".git", "venv", "node_modules", "__pycache__"}]
         for name in files:
-            if name.endswith(('.py', '.md', '.json', '.yaml', '.txt', '.js')):
+            if name.endswith(('.py', '.md', '.json', '.yaml', '.txt', '.js', '.css', '.html')):
                 fpath = os.path.join(root, name)
                 try:
                     with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                         for i, line in enumerate(f, 1):
-                            if query in line:
-                                matches.append(f"{os.path.relpath(fpath, root_path)}:{i}: {line.strip()[:100]}")
-                                if len(matches) > 30: return "### Top 30 Results:\n" + "\n".join(matches)
+                            line_content = line.strip()
+                            # Check for any keyword (OR logic)
+                            for kw in keywords:
+                                if kw.lower() in line_content.lower():
+                                    matches.append(f"{os.path.relpath(fpath, root_path)}:{i}: [{kw}] {line_content[:150]}")
+                                    break # One match per line is enough
+                            if len(matches) > 50: return "### Top 50 Results:\n" + "\n".join(matches)
                 except Exception: continue
-    return "### Search Results:\n" + "\n".join(matches) if matches else f"No matches for '{query}'"
+    
+    res = "### Search Results:\n" + "\n".join(matches) if matches else f"No matches found for any of: {keywords}"
+    return res
 
 @agent_tool
 def get_file_info(path: str = None, **kwargs) -> str:
@@ -197,4 +231,38 @@ def copy_file(source: str = None, destination: str = None, **kwargs) -> str:
     except Exception as e:
         return f"Copy Error: {e}"
 
-EXPORTED_TOOLS = [list_directory, open_item, get_file_tree, read_file, write_file, append_to_file, delete_file, search_text_in_files, get_file_info, make_directory, copy_file]
+@agent_tool
+def replace_file_content(path: str, target_text: str, replacement_text: str, **kwargs) -> str:
+    """
+    [v3.8.12] Universal Text Patcher (Grep-based replacement). 
+    Replaces a specific string block with new text in ANY file (.md, .sql, .env, .py).
+    Does NOT require AST. Ideal for non-Python files or simple changes.
+    """
+    path = resolve_path(path)
+    if not os.path.exists(path):
+        parent = os.path.dirname(path) or "."
+        hint = ""
+        if os.path.exists(parent):
+            hint = f"\n🔍 [PATH HINT]: Parent '{parent}' contains: {os.listdir(parent)[:10]}"
+        return f"❌ [ERROR]: File not found: {path}.{hint}"
+
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        if target_text not in content:
+            return f"❌ [REPLACE FAILED]: Target text not found in '{path}'. Use EXACT string for target_text."
+
+        # Replace first occurrence by default (Safer)
+        new_content = content.replace(target_text, replacement_text, 1)
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+        from core.brain.memory import memory_manager
+        memory_manager.reindex_file(path)
+        return f"✅ [TEXT PATCHED]: Updated file '{path}'."
+    except Exception as e:
+        return f"❌ [PATCH ERROR]: {str(e)}"
+
+EXPORTED_TOOLS = [list_directory, open_item, get_file_tree, read_file, write_file, append_to_file, delete_file, search_text_in_files, get_file_info, make_directory, copy_file, replace_file_content]

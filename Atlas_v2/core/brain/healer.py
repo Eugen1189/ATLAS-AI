@@ -140,6 +140,13 @@ class Healer:
         if error_type == "git_pathspec_error":
             return "⚠️ GIT ERROR: Use double quotes \"...\" for messages on Windows. Correct and retry."
 
+        if error_type == "syntax_error":
+             return (
+                 "### 🛑 [PARSING ERROR]: Your patch failed (invalid syntax or file type).\n"
+                 "### 🔧 RECOVERY: If the file is NOT a .py file (e.g., .md, .sql, .txt), "
+                 "you MUST NOT use 'apply_ast_patch'. Switch to 'write_file' or 'append_to_file' immediately."
+             )
+
         if error_type == "project_not_found":
             return "📁 WORKSPACE ERROR: Project not found. Use 'get_workspace_summary' or provide an absolute path."
 

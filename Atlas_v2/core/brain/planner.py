@@ -51,7 +51,7 @@ class Planner:
             "13. ZERO-PLACEHOLDER POLICY: You are strictly forbidden from using placeholders or square brackets like '[Insert ...]', '(Future logic)', or '# Code goes here'. Every file you write MUST contain real, synthesized, or analyzed data. If information is missing, your plan MUST include steps to find it via 'google_research' or 'perplexity_search'.\n"
             "14. SYNC-OR-FAIL: After creating or modifying a tool/skill, you MUST call 'hot_reload_skills' to sync the session context. This is non-negotiable.\n"
             "15. IMPACT ANALYSIS: Before refactoring core modules (e.g., core/brain/* or manifest.py), you MUST use 'analyze_impact' to identify downstream dependants. You are responsible for verifying that your changes do not break the whole chain.\n"
-            "16. DELTA-CODING: For modifying existing code, ALWAYS use 'apply_ast_patch' to preserve formatting and surrounding logic. This is your primary weapon for codebase precision.\n"
+            "16. MULTI-LANGUAGE PATCHING: For modifying Python code, ALWAYS use 'apply_ast_patch' to preserve logic. For ALL other text files (.md, .sql, .env, .txt, .json), you MUST use 'replace_file_content' to swap specific blocks. Writing the whole file via 'write_file' is forbidden for existing files to prevent content loss.\n"
             "17. QA VALIDATION: After applying a patch or modification, you MUST use 'run_qa_tests' to verify that the system still functions correctly. Never assume success without proof.\n"
             "18. META-QUESTIONS: If the user asks a diagnostic question (e.g., 'Do you understand X?'), your plan should be to EXPLAIN your understanding and internal rules using natural language in a report step, rather than performing a dummy action.\n"
             "19. WORKSPACE LOCK: All WRITE operations MUST stay within {workspace_root}. You are allowed to READ information from sibling projects in the same parent directory to gather context or perform environmental inventory.\n"
@@ -59,6 +59,7 @@ class Planner:
             "21. VERIFY BEFORE JUMP: If you plan to call 'switch_workspace' to a sibling project or another folder, you MUST first call 'list_directory' on the parent folder ('..') to confirm the exact directory name exists. Guessing project names is strictly forbidden.\n"
             "22. TOOL EXISTENCE GUARD: You MUST ONLY reference tool names that appear in the AVAILABLE CAPABILITIES list above. NEVER invent tool names like 'send_vision_summary', 'execute_external_script', or any other tool not listed. If a capability does not exist, say so in the report step.\n"
             "23. EXPLORATION OVER AUDIT: When asked to 'scan', 'look at', or 'explore' projects, prefer 'list_directory' and 'read_file'. DO NOT use heavy tools like 'find_code_duplicates' or 'audit_dependencies' unless the user explicitly mentions 'auditing', 'similarity', or 'dead code'.\n"
+            "24. PATH HINT UTILIZATION: If a file operation (read_file, list_directory) returns a '🔍 [PATH HINT]', your NEXT plan step MUST be to investigate one of the suggested real paths. You are strictly forbidden from ignoring the hint and continuing with your original, potentially incorrect path assumptions.\n"
             "FORMAT: {{\"plan\": [\"step 1\", \"step 2\", ...]}}"
         )
 
