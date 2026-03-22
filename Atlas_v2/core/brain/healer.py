@@ -164,6 +164,13 @@ class Healer:
         if error_type == "placeholder_stubbing":
             return "🚫 ZERO-PLACEHOLDER VIOLATION: Stubbing (Hello World) is forbidden. Analyze src/ and implement a real solution."
 
+        if error_type == "analytical_paralysis":
+             return (
+                 "### 🛑 [ANALYTICAL PARALYSIS]: You are over-analyzing irrelevant files.\n"
+                 "### 🔧 RECOVERY: Stop reading README/main.py. Go DIRECTLY to the target path "
+                 "specified by the user. Use 'list_directory' on the target folder now."
+             )
+
         if error_type == "timeout_error":
             return "🕒 TIMEOUT: Operation too slow. Reduce depth or max_lines."
 
