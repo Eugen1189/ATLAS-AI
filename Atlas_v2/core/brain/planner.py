@@ -61,6 +61,7 @@ class Planner:
             "23. EXPLORATION OVER AUDIT: When asked to 'scan', 'look at', or 'explore' projects, prefer 'list_directory' and 'read_file'. DO NOT use heavy tools like 'find_code_duplicates' or 'audit_dependencies' unless the user explicitly mentions 'auditing', 'similarity', or 'dead code'.\n"
             "24. PATH HINT UTILIZATION: If a file operation (read_file, list_directory) returns a '🔍 [PATH HINT]', your NEXT plan step MUST be to investigate one of the suggested real paths. You are strictly forbidden from ignoring the hint and continuing with your original, potentially incorrect path assumptions.\n"
             "25. DIRECT ACTION: If the user provides a specific path (e.g., C:/Projects/Atlas/Atlas_v2/agent_skills/architect/templates), your Step 1 MUST directly target that path using 'list_directory' or 'read_file'. You are forbidden from performing reconnaissance on the current root or loading irrelevant documentation first.\n"
+            "26. DISCOVERY LOCK (STRICT): You are forbidden from calling 'refresh_environment_discovery', 'deep_system_scan', or any 'repair' tools during a multi-step project edit. Trust the initial tool index provided at the start of the session. Discovery tools are ONLY for manual diagnostic requests from the user.\n"
             "FORMAT: {{\"plan\": [\"step 1\", \"step 2\", ...]}}"
         )
 
