@@ -44,12 +44,14 @@ class SecurityGuard:
     BLACKLIST = [
         ".env",
         ".git/config",
+        ".axis_session.json", # [v3.8.23] Block self-tampering
         "facts_atlas.json",
         "facts_default.json",
         "embeddings_",
         ".key",
         "shadow",
-        "passwd"
+        "passwd",
+        ".antigravityignore"
     ]
 
     @classmethod
@@ -69,7 +71,7 @@ class SecurityGuard:
         return True
 
     @staticmethod
-    def is_safe_path(path_str: str, check_core: bool = False) -> bool:
+    def is_safe_path(path_str: str, check_core: bool = True) -> bool:
         """
         Backward-compatible boolean check for path safety.
         """
@@ -77,7 +79,7 @@ class SecurityGuard:
         return safe
 
     @staticmethod
-    def validate_path(path_str: str, check_core: bool = False) -> tuple[bool, str]:
+    def validate_path(path_str: str, check_core: bool = True) -> tuple[bool, str]:
         """
         Validates if a given path is safe to execute or modify.
         Returns (is_safe: bool, error_message: str).
@@ -99,15 +101,13 @@ class SecurityGuard:
                 logger.warning("security.blacklist_blocked", path=path_str, pattern=sensitive)
                 return False, f"🚨 [SECURITY]: Access denied. Path '{path_str}' contains blacklisted pattern '{sensitive}' (BUNKER v5.5 Policy)."
         
-        # 3. Workspace-Fluid Check: If it's inside the workspace, it's generally trusted
-        is_in_workspace = p.startswith(SecurityGuard.workspace_root)
-        
-        # 4. Core Protection (Optional Layer)
+        # 3. Core Protection (v3.8.23)
         if check_core:
-            # We prevent direct rewrites of core AXIS system files even inside workspace
-            if "/core/" in p and "/ui/" not in p and "/config/" not in p:
-                if not is_in_workspace:
-                    logger.warning("security.core_override_blocked", path=path_str)
-                    return False, "🚨 [SECURITY]: Direct override of system core modules is strictly forbidden."
+            # Strictly forbid direct rewrites of core AXIS system files
+            if "/core/" in p and not any(x in p for x in ["/ui/", "/config/", "/mascot/"]):
+                logger.warning("security.core_override_blocked", path=path_str)
+                return False, "🚨 [SECURITY]: Direct override of system core modules is strictly forbidden. Please use project-level skills or templates."
+
+        return True, ""
 
         return True, ""
