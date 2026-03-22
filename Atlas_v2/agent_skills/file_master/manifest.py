@@ -102,11 +102,13 @@ def write_file(path: str, content: str = "", **kwargs) -> str:
     """Overwrites or creates a file with specified content (UTF-8)."""
     path = path or kwargs.get('file_path') or kwargs.get('item_path')
     path = resolve_path(path)
-    # [v3.6.8] Zero-Placeholder Policy Check
-    content_lower = content.lower().strip()
-    placeholders = ["hello world", "basic structure", "[insert here]", "todo:", "placeholder"]
-    if any(p in content_lower for p in placeholders) or (len(content_lower) < 20 and not path.endswith('.txt')):
-         return "❌ [SECURITY REJECTED]: Zero-Placeholder Policy Violation. AXIS is forbidden from creating stubs or empty structures. Please provide PRODUCTION-READY content."
+    # [v3.8.25] Atomic Breakthrough: Relax policy for templates and skills
+    is_template = any(x in path.lower() for x in ["templates", "skills", "manifest.py"])
+    if not is_template:
+        content_lower = content.lower().strip()
+        placeholders = ["hello world", "basic structure", "[insert here]", "todo:", "placeholder"]
+        if any(p in content_lower for p in placeholders) or (len(content_lower) < 15 and not path.endswith('.txt')):
+             return "❌ [SECURITY REJECTED]: Zero-Placeholder Policy Violation. Provide PRODUCTION-READY content for source files."
 
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)

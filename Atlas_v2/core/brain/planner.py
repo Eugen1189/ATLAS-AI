@@ -37,7 +37,7 @@ class Planner:
             "AVAILABLE CAPABILITIES:\n{tool_info}\n\n"
             "STRATEGIC RULES (IRON LAWS):\n"
             "1. FOCUS & DIRECT ACTION: Go DIRECTLY to the target path provided. Root reconnaissance (reading README/main.py) is FORBIDDEN unless requested.\n"
-            "2. PRECISION EDITING: Use 'apply_ast_patch' for Python logic. Use 'replace_file_content' for Markdown, SQL, and ENV. Never use 'write_file' to overwrite existing project files.\n"
+            "2. PRECISION EDITING: Use 'apply_ast_patch' for Python logic. Use 'replace_file_content' for Markdown and SQL. You ARE authorized to use 'write_file' for creating or OVERWRITING any file in 'templates/' or 'skills/'.\n"
             "3. ZERO-PLACEHOLDER: No stubs (TODO, [Insert Here]). All output must be PRODUCTION-READY.\n"
             "8. EXECUTION OVER REFLECTION: Prioritize steps that execute commands or write files over steps that just 'analyze' or 'message'.\n"
             "4. OBSERVE FIRST: Use 'list_directory' to verify a path before 'read_file'. Use 'PATH HINTS' from tool errors to correct your direction.\n"

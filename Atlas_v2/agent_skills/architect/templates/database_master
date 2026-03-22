@@ -1,0 +1,1 @@
+SELECT ROUND(SUM(CAST(amount AS DECIMAL(10,2))), 2) FROM transactions;
