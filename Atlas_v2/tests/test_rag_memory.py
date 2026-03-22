@@ -33,9 +33,9 @@ class TestVectorStore(unittest.TestCase):
         mock_chromadb.PersistentClient.return_value = mock_client
 
         store = VectorStore(persist_dir=self.test_dir)
-
         self.assertTrue(store.is_available)
-        mock_client.get_or_create_collection.assert_called_once()
+        # In latest version, it calls it 3 times (knowledge, session, cache)
+        self.assertEqual(mock_client.get_or_create_collection.call_count, 3)
 
     @patch("core.brain.vector_store.CHROMADB_AVAILABLE", False)
     def test_init_without_chromadb(self):
@@ -92,8 +92,9 @@ class TestVectorStore(unittest.TestCase):
         mock_chromadb.PersistentClient.return_value = mock_client
 
         store = VectorStore(persist_dir=self.test_dir)
-        results = store.query("hello function")
-
+        # Use single collection to avoid duplicate matches from shared mock
+        results = store.query("hello function", collections=["knowledge"])
+        
         self.assertEqual(len(results), 1)
         self.assertIn("text", results[0])
         self.assertIn("source", results[0])
@@ -119,9 +120,8 @@ class TestVectorStore(unittest.TestCase):
 
         store = VectorStore(persist_dir=self.test_dir)
         stats = store.get_stats()
-
         self.assertEqual(stats["status"], "ready")
-        self.assertEqual(stats["documents"], 42)
+        self.assertEqual(stats["knowledge_docs"], 42)
 
 
 class TestCodeIndexer(unittest.TestCase):

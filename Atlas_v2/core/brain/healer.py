@@ -1,7 +1,6 @@
 import json
 import os
 import re
-
 from core.logger import logger
 
 class Healer:
@@ -47,6 +46,34 @@ class Healer:
         "sql_no_such_column": {
             "patterns": [r"no such column", r"no such table", r"operationalerror"],
             "suggestion": "verify_database_schema"
+        },
+        "mcp_invalid_params": {
+            "patterns": [r"-32602", r"invalid params", r"invalid arguments for tool"],
+            "suggestion": "check_mcp_docs_and_retry"
+        },
+        "regressive_research": {
+            "patterns": [r"how to install", r"what is fastapi", r"install.*package", r"how to use.*library", r"how to handle .* error", r"python error .* fix"],
+            "suggestion": "look_local_first_audit"
+        },
+        "placeholder_stubbing": {
+            "patterns": [r"hello world", r"placeholder", r"todo", r"basic structure"],
+            "suggestion": "zero_placeholder_violation"
+        },
+        "timeout_error": {
+            "patterns": [r"timeout", r"timed out", r"deadline exceeded"],
+            "suggestion": "increase_timeout_or_optimize"
+        },
+        "workspace_drift": {
+            "patterns": [r"wrong projects", r"incorrect path", r"wrong workspace", r"not in the target project"],
+            "suggestion": "switch_workspace_immediately"
+        },
+        "docker_daemon_missing": {
+            "patterns": [r"failed to connect to the docker api", r"docker daemon is not running", r"error response from daemon"],
+            "suggestion": "check_docker_service_and_report"
+        },
+        "language_mismatch": {
+            "patterns": [r"invalid decimal literal", r"syntax error", r"cannot parse ast"],
+            "suggestion": "do_not_use_python_tools_on_yaml"
         }
     }
 
@@ -56,59 +83,84 @@ class Healer:
     def summarize_evolution(self):
         """Виводить список вивчених правил при старті системи."""
         if os.path.exists(self.rules_path):
-            with open(self.rules_path, 'r', encoding='utf-8') as f:
-                rules = json.load(f)
-            
-            print("\n[AXIS EVOLUTION REPORT]")
-            print("Learned Lessons (Dynamic Micro-Rules):")
-            if not rules:
-                print("- No rules learned yet. System is in baseline state.")
-            for i, rule in enumerate(rules, 1):
-                print(f"{i}. {rule}")
-            print("-" * 30 + "\n")
+            try:
+                with open(self.rules_path, 'r', encoding='utf-8') as f:
+                    rules = json.load(f)
+                
+                print("\n[AXIS EVOLUTION REPORT]")
+                print("Learned Lessons (Dynamic Micro-Rules):")
+                if not rules:
+                    print("- No rules learned yet. System is in baseline state.")
+                for i, rule in enumerate(rules, 1):
+                    print(f"{i}. {rule}")
+                print("-" * 30 + "\n")
+            except Exception:
+                print("[AXIS EVOLUTION]: Error loading dynamic rules.")
         else:
             print("[AXIS EVOLUTION]: Baseline state. No dynamic rules found.")
-
 
     @staticmethod
     def diagnose(error_message: str) -> str:
         """Визначає тип помилки за текстом"""
-        err_lower = error_message.lower()
+        err_lower = str(error_message).lower()
         for error_type, data in Healer.RECIPES.items():
             if any(re.search(p, err_lower) for p in data["patterns"]):
                 return error_type
         return "unknown_anomaly"
 
-    def propose_fix(self, error_type: str, last_action: dict):
-        """Формує нову стратегію виправлення"""
+    def propose_fix(self, error_type: str, last_action: dict) -> str:
+        """Suggests a recovery strategy for the agent."""
         if error_type == "file_not_found":
-            target = last_action.get("arguments", {}).get("path", "unknown")
-            return f"The file '{target}' was not found. Use 'list_directory' to find the correct path and try again."
+            target = last_action.get("arguments", {}).get("path", last_action.get("target_file", "unknown"))
+            return (
+                f"### 🛑 PATH DISCOVERY ERROR: '{target}' not found.\n"
+                "### 🔧 MANDATORY: Do NOT search the web. Do NOT guess subfolders.\n"
+                "### 🔧 ACTION: Your NEXT action MUST be 'list_directory' on the current project root "
+                "to see the actual structure (e.g., if there is a 'src/' folder)."
+            )
         
         if error_type == "tool_not_found":
             tool = last_action.get("tool_name", "unknown")
-            return f"The tool or command '{tool}' is not currently available. I am initiating an 'refresh_environment_discovery' to update my environment data. Please try again after the scan."
+            return f"🔧 TOOL ERROR: '{tool}' is missing. Initiating 'refresh_environment_discovery' to update environment data."
 
         if error_type == "missing_argument":
-            tool = last_action.get("tool_name", "unknown")
-            return f"CRITICAL: Tool '{tool}' failed due to incorrect arguments. STOP guessing. Use 'get_tool_info' to see the exact schema before retrying. If the tool is fundamentally wrong for this task, switch to RAG search."
+            return "❌ ARGUMENT ERROR: Incorrect arguments. Use 'get_tool_info' to see the exact schema before retrying."
 
         if error_type == "json_parse_error":
-            return "CRITICAL: Your last tool call was not valid JSON. Ensure all quotes, braces, and commas are correct. DO NOT include any text outside the JSON block. Close all open '{' and '[' blocks properly."
+            return (
+                "### 🛑 JSON CORRUPTION: Your input/output is not valid JSON.\n"
+                "### 🔧 MANDATORY: Do NOT search the web. Use 'run_command' to write a Python script "
+                "that reads the raw string and repairs it using regex or string splitting."
+            )
 
         if error_type == "security_rejection":
-            return "🛡️ SECURITY ALERT: Your last command or path was rejected by the AXIS Firewall. DO NOT try to bypass the firewall with the same command. Instead, find a SAFER way to achieve the goal. (e.g., if 'python -c' was blocked, try writing a temporary .py file and then executing it)."
+            result = last_action.get("result", "Security block bypass attempt.")
+            return f"🛡️ SECURITY BLOCK: {result} STOP. Do not retry the same path. Search within workspace."
 
         if error_type == "git_pathspec_error":
-            return "⚠️ GIT CONFIG ERROR: On Windows CMD/PowerShell, you MUST use double quotes \"...\" for git commit messages and file paths. Single quotes '...' cause 'pathspec' errors. Correct the quoting and retry."
+            return "⚠️ GIT ERROR: Use double quotes \"...\" for messages on Windows. Correct and retry."
 
         if error_type == "project_not_found":
-            return "📁 WORKSPACE ERROR: The project was not found. 1) Use 'get_workspace_summary' to see tracked paths. 2) If the project is at a known path, call 'open_workspace' with the FULL ABSOLUTE PATH. 3) Check for typos (CafeAI vs Cafe AI)."
+            return "📁 WORKSPACE ERROR: Project not found. Use 'get_workspace_summary' or provide an absolute path."
 
         if error_type == "sql_no_such_column":
-            return "🗄️ SQL SCHEMA ERROR: You are guessing column or table names. STOP. Your next action MUST be to call 'get_db_schema' for the target database to verify the structure before retrying the query."
+            return "🗄️ SQL SCHEMA ERROR: Guessing column names detected. Use 'get_db_schema' first."
 
-        if error_type == "unknown_anomaly" and "❌" in last_action.get("result", ""):
-            return "🔧 TECHNICAL FAILURE: The command failed. Analyze the error output, correct the logic or syntax (check paths, quotes, or missing files), and retry immediately."
+        if error_type == "mcp_invalid_params":
+            server = last_action.get("server", "target_server")
+            tool = last_action.get("tool_name", "unknown")
+            return f"🚨 MCP PARAMETER ERROR (-32602): Tool '{tool}' on '{server}' has invalid JSON arguments. Call 'list_mcp_capabilities' to verify schema."
+
+        if error_type == "regressive_research":
+            return "🧘 FOCUS LOSS: You are searching for general programming help or error handling. THIS IS FORBIDDEN. Your mission is LOCAL code. Use 'list_directory' to find files or 'read_file' to understand existing error handling in the project."
+
+        if error_type == "placeholder_stubbing":
+            return "🚫 ZERO-PLACEHOLDER VIOLATION: Stubbing (Hello World) is forbidden. Analyze src/ and implement a real solution."
+
+        if error_type == "timeout_error":
+            return "🕒 TIMEOUT: Operation too slow. Reduce depth or max_lines."
+
+        if error_type == "unknown_anomaly" and "❌" in str(last_action.get("result", "")):
+            return "🔧 TECHNICAL FAILURE: Command failed. Verify syntax and retry."
 
         return "Anomaly detected. Please review logs and manually intervene."

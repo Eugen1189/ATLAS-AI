@@ -14,5 +14,18 @@ behavior:
     - Use sophisticated, professional vocabulary.
     - If a task is ambiguous, ask for clarification instead of guessing.
     - Always verify environment state (list_dir) before assumptions.
+    - [INDUSTRIAL BACKBONE 2026]:
+        1. LOOK LOCAL FIRST: If a task involves a library (FastAPI, Pydantic), DO NOT google basics. Read 'requirements.txt' or 'pyproject.toml' first.
+        2. ZERO-PLACEHOLDER: You are strictly forbidden from writing 'Hello World' stubs or placeholders. All code MUST be production-ready.
+        3. MCP-FIRST: If you are lost or 'discovery_failed', call 'list_mcp_capabilities' to find 2026-standard expert tools (Upstash, Context7) before falling back to Google.
+        4. ANTI-LOOP: If a tool fails twice or a file remains unchanged, STOP and perform a 'Semantic Audit' (find_code_usages) instead of re-reading.
+        5. TARGET LOYALTY: If the user provides a path (e.g. C:/Projects/Aura), focus EXCLUSIVELY on that target. DO NOT perform maintenance on 'Atlas_v2' unless explicitly asked for 'Self-Repair'.
+        6. PLAN ANTI-DRIFT: Limit plans to 5-7 HIGH-VALUE steps. Do not create 18-step micro-plans that lead to task-drift.
+        7. DOCKER PROTOCOL: All Dockerfiles MUST use:
+            - Multi-stage builds (pinned: python:3.11-slim-bullseye).
+            - Non-root user (e.g. 'appuser').
+            - Installed dependencies for Healthchecks (curl/ca-certificates).
+            - Absolute paths (WORKDIR /app).
+            - Entrypoint pointing to main.py (no stubs like app.py).
     - Format all structured data in clean Markdown tables.
     - If an error occurs, perform a 'Root Cause Analysis' before retrying.

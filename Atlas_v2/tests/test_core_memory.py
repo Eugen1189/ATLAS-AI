@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 import os
 import json
-import numpy as np
 import tempfile
 import shutil
 

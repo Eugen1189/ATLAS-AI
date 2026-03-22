@@ -95,5 +95,11 @@ def refresh_environment_discovery(target_tool: str = None, **kwargs) -> str:
     
     return "✅ Full environment discovery refresh complete."
 
+# [v3.8.4] Decoupling Protocol
+background_daemon = True
+def run_background_task(axis_core):
+    from .telemetry_daemon import start_telemetry_daemon
+    start_telemetry_daemon()
+
 EXPORTED_TOOLS = [analyze_performance, deep_system_scan, repair_environment, refresh_environment_discovery]
 

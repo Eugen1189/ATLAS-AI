@@ -109,6 +109,30 @@ class SecretValidator:
         return result
 
     @classmethod
+    def _probe_connectivity(cls, name: str, value: str) -> bool:
+        """
+        [v3.7.1] Active Probe: Checks if the key is actually valid with the provider.
+        Performs a lightweight, non-destructive call.
+        """
+        try:
+            import httpx
+            if name == "Gemini":
+                # Quick models list check
+                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={value}"
+                resp = httpx.get(url, timeout=5.0)
+                return resp.status_code == 200
+            
+            if name == "GitHub PAT":
+                # Check current user
+                headers = {"Authorization": f"token {value}", "Accept": "application/vnd.github.v3+json"}
+                resp = httpx.get("https://api.github.com/user", headers=headers, timeout=5.0)
+                return resp.status_code == 200
+                
+            return True # Other keys stay at format-only for now
+        except Exception:
+            return False
+
+    @classmethod
     def print_boot_report(cls, brain_type: str = "ollama"):
         """
         Prints a formatted security status report during AXIS boot.
@@ -119,7 +143,12 @@ class SecretValidator:
 
         if result["valid"]:
             for name in result["valid"]:
-                print(f"  [OK] {name}: configured")
+                env_var = cls.KEY_DEFINITIONS[name]["env"]
+                val = os.getenv(env_var)
+                is_active = cls._probe_connectivity(name, val) if name in ["Gemini", "GitHub PAT"] else True
+                status_icon = "✅" if is_active else "❌"
+                status_text = "ACTIVE" if is_active else "EXPIRED/INVALID"
+                print(f"  [{status_icon}] {name}: {status_text}")
 
         if result["warnings"]:
             for warning in result["warnings"]:
@@ -136,7 +165,7 @@ class SecretValidator:
         has_issues = bool(result["missing"] or result["malformed"])
 
         if not has_issues:
-            print("  [STATUS] All required secrets OK")
+            print("  [STATUS] All required secrets present")
         else:
             print("  [STATUS] Fix issues above before proceeding")
 

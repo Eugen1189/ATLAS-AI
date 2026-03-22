@@ -11,11 +11,15 @@ class MemoryManager:
     Prevents 'Amnesia' by storing and retrieving key project metadata.
     Now includes ReflectionEngine for episodic memory generation.
     """
-    def __init__(self, namespace="atlas"):
-        # Path: Atlas_v2/../memories/facts.json
-        self.memories_dir = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "memories"
-        ))
+    def __init__(self, namespace="atlas", project_root: str = None):
+        # [v3.7.7] Use dynamic root if provided, otherwise default to relative project path
+        if not project_root:
+            project_root = os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "..", "..", ".."
+            ))
+            
+        self.project_root = project_root
+        self.memories_dir = os.path.join(project_root, "memories")
         os.makedirs(self.memories_dir, exist_ok=True)
         self.namespace = namespace
         
@@ -32,9 +36,9 @@ class MemoryManager:
             from core.brain.vector_store import VectorStore
             from core.brain.rag_retriever import RAGRetriever
             from core.brain.code_indexer import CodeIndexer
-            self.vector_store = VectorStore(namespace=namespace)
+            self.vector_store = VectorStore(namespace=namespace, project_root=self.project_root)
             self.rag = RAGRetriever(vector_store=self.vector_store)
-            self.indexer = CodeIndexer(vector_store=self.vector_store)
+            self.indexer = CodeIndexer(vector_store=self.vector_store, project_root=self.project_root)
             logger.info("memory.rag_initialized",
                         namespace=namespace,
                         available=self.rag.is_available)
@@ -43,12 +47,27 @@ class MemoryManager:
             self.vector_store = None
             self.rag = None
 
-    def switch_namespace(self, new_namespace: str):
-        """Switches the memory context to a different project/namespace."""
-        if new_namespace == self.namespace:
+    def switch_namespace(self, new_namespace: str, project_root: str = None):
+        """[RESILIENT v3.7.7] Shifts memory context and unlocks previous database handles."""
+        if new_namespace == self.namespace and (not project_root or project_root == getattr(self, "project_root", None)):
             return
+            
         logger.info("memory.switching_namespace", old=self.namespace, new=new_namespace)
-        self.__init__(namespace=new_namespace)
+        
+        # 1. Resource Cleanup: Explicitly nullify handles to trigger GC / release locks
+        if hasattr(self, "vector_store"):
+             self.vector_store = None
+             self.rag = None
+             self.indexer = None
+        
+        # 2. Update dynamic root if provided (prevents indexing wrong project)
+        if project_root:
+             self.project_root = project_root
+             # Update memories_dir relative to the new project root
+             self.memories_dir = os.path.join(project_root, "memories")
+             os.makedirs(self.memories_dir, exist_ok=True)
+             
+        self.__init__(namespace=new_namespace, project_root=project_root)
 
     def _load_facts(self) -> dict:
         if not os.path.exists(self.facts_file):
@@ -257,20 +276,24 @@ class MemoryManager:
                     content = content[:300] + "...[truncated tool output]"
                 transcript += f"[{role.upper()}]: {content}\n"
             prompt = f"""
-            You are the Memory Synthesizer for AXIS.
-            Analyze the following conversation transcript between the COMMANDER (User) and AXIS (Assistant).
-            Your task is to extract user preferences, rules, future plans, and technical facts.
-            CRITICAL: Pay special attention to direct commands like "запам'ятай" (remember), "відтепер" (from now on), or any rules about how AXIS should behave.
+            You are the Strategic Memory Synthesizer for AXIS (v6.0.0).
+            Analyze the following conversation transcript.
+            Your task is to extract ONLY high-value technical facts, user directives, and architectural decisions.
+            
+            ### FILTERING RULES:
+            - SKIP: Tool outputs, file listings, terminal logs, and 'Success'/'Failure' status messages.
+            - IGNORE: Repetitive technical noise or boilerplate code.
+            - CAPTURE: Commands like "запам'ятай" (remember) or "відтепер" (from now on).
+            - CAPTURE: Final project paths, specific encryption passwords, and custom architectural rules.
 
             Format your output EXACTLY as a JSON list of objects. Example output:
             [
-                {{"key": "preference_communication", "value": "Commander hates 'Verbal Confirmation' and prefers short, dry answers"}},
-                {{"key": "persona_style", "value": "Commander wants AXIS to talk like a strict sergeant"}},
-                {{"key": "plan_migration", "value": "Migrating project to Python 3.12 next week"}}
+                {"key": "rule_no_mascot", "value": "Commander ordered visual mascot to be disabled due to distraction."},
+                {"key": "path_aura", "value": "Primary workspace for Aura Shield is C:/Projects/Aura_Secure_API."}
             ]
             
-            If absolutely nothing of value was discussed, return [].
-            DO NOT output any conversational text. ONLY valid JSON.
+            If no NEW strategic internal facts were found, return [].
+            ONLY valid JSON. No chatter.
 
             Transcript to analyze:
             {transcript}

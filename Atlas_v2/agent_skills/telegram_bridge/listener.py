@@ -4,38 +4,13 @@ import time
 import threading
 import json
 import re
+from .utils import format_telegram_response
 from core.logger import logger
 from core.i18n import lang
 from core.system.path_utils import load_environment
 
 PENDING_CONFIRMATIONS = {}
 
-def _format_response(raw_result) -> str:
-    """Filters out technical artifacts and thoughts from the final response (v3.6.8)."""
-    if not raw_result: return ""
-    
-    text = str(raw_result).strip()
-    
-    # 1. Strip Thought Blocks
-    text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
-    
-    # 2. Extract Response from JSON if present
-    if text.startswith('{') or '```json' in text:
-        try:
-            # Try parsing if it's pure JSON
-            if text.startswith('{'):
-                data = json.loads(text)
-                if "response" in data: return data["response"]
-            # Try finding a markdown block
-            match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
-            if match:
-                data = json.loads(match.group(1))
-                if "response" in data: return data["response"]
-        except: pass
-        
-    # 3. Final cleanup (strip extra newlines/artifacts)
-    text = text.replace("MISSION ACCOMPLISHED", "").strip()
-    return text
 
 def _poll_telegram(axis_core):
     """Refined 2026 Background Poller: Secure, fast, and light (v3.6.8)."""
@@ -148,7 +123,7 @@ def _poll_telegram(axis_core):
                     try:
                         # Direct conscious input into the core
                         raw_reply = axis_core.think(text, source=f"telegram:{sender_id}")
-                        reply = _format_response(raw_reply)
+                        reply = format_telegram_response(raw_reply)
                         
                         if reply:
                             requests.post(send_url, json={

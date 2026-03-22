@@ -36,8 +36,7 @@ from core.orchestrator import AxisCore
 # from agent_skills.audio_interface.listener import start_voice_listener
 
 from core.i18n import lang
-from agent_skills.telegram_bridge.listener import start_telegram_listener
-from agent_skills.diagnostics.telemetry_daemon import start_telemetry_daemon
+# [v3.8.4] Background listeners (Telegram, Telemetry, etc.) are now discovered autonomously
 
 def safe_print(text: str):
     """Prints text ensuring no UnicodeEncodeError on Windows terminals."""
@@ -49,12 +48,11 @@ def safe_print(text: str):
 
 def bunker_ephemeral_cleanup():
     """
-    [BUNKER v5.5] Ephemeral Sanitization:
-    Removes temporary session files, voice buffers, and logs to prevent persistence.
+    [BUNKER v5.6] Ephemeral Sanitization:
+    Removes temporary session files, vision buffers, and logs to prevent persistence.
     """
     temp_files = [
         "vision_buffer.png",
-        "response_audio.mp3",
         "last_action.json",
         "diagnostic.png"
     ]
@@ -93,19 +91,8 @@ def cleanup_zombie_processes():
             pass
 
 def launch_visuals():
-    """Запускає HUD як окремий процес Windows для ізоляції пам'яті"""
-    hud_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "ui", "hud.py")
-    
-    # Використовуємо CREATE_NEW_PROCESS_GROUP для Windows, щоб ізолювати процеси
-    try:
-        subprocess.Popen(
-            [sys.executable, hud_path],
-            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-        )
-        safe_print("[HUD] HUD Process launched in isolation mode.")
-    except Exception as e:
-        safe_print(f"[HUD] Failed to launch HUD process: {e}")
+    """[v3.8.3] Visuals deactivated by Commander's command."""
+    pass
 
 def run_terminal_loop(axis):
     """Цикл вводу в терміналі"""
@@ -160,10 +147,8 @@ if __name__ == "__main__":
         from core.brain.healer import Healer
         Healer().summarize_evolution()
         
-        start_telegram_listener(axis)
-        
-        # 🛡️ TELEMETRY BOOT: Autonomous system monitoring
-        start_telemetry_daemon()
+        # [v3.8.4] Autonomous Daemon Launch (Decoupled Protocol)
+        axis.start_background_tasks()
         
         # 🎙️ [V3.6.6 CLEANUP] Voice boot disabled for minimalism
         # start_voice_listener(axis, device_index=1)

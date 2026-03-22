@@ -102,6 +102,13 @@ def refresh_code_index(force: bool = False, **kwargs) -> str:
     if not hasattr(memory_manager, 'indexer') or not memory_manager.indexer:
         return "❌ [ERROR]: Code Indexer is not initialized."
     
+    # [v3.6.9] Infinite Indexing Loop Prevention
+    if force and getattr(refresh_code_index, "_already_forced", False):
+         return "⚠️ [WARNING]: You already performed a FORCE REFRESH in this session. Re-indexing again will not solve the issue. Please check 'get_workspace_summary' or call 'read_file' directly on specific paths to verify local contents."
+    
+    if force:
+        refresh_code_index._already_forced = True
+
     logger.info("code_intelligence.refresh_index_triggered", force=force)
     stats = memory_manager.indexer.index_project(force=force)
     
@@ -124,4 +131,78 @@ def find_code_usages(symbol_name: str, **kwargs) -> str:
         return f"No clear usages found for '{symbol_name}' in semantic memory."
     return context
 
-EXPORTED_TOOLS = [refactor_code, find_code_usages, refresh_code_index, verify_code]
+@agent_tool
+def apply_ast_patch(path: str, target_name: str, new_code: str, **kwargs) -> str:
+    """
+    [v3.8.8] Precision Delta-Coding (HITL). 
+    Replaces a specific Function or Class by its name using AST manipulation.
+    Requires Commander's approval via Telegram before applying.
+    """
+    import ast
+    import re
+    if not os.path.exists(path):
+        return f"❌ [PATCH]: File not found: {path}."
+        
+    try:
+        # 1. Verification Preview
+        preview = f"🛠️ **PATCH PROPOSAL** for `{path}`:\n🎯 **Target**: `{target_name}`\n\n```python\n{new_code[:300]}...\n```\nApply this patch?"
+        confirmed = ask_user_confirmation(text=preview)
+        if not confirmed:
+            return "❌ [REFUSED]: Patch cancelled by Commander."
+
+        # 2. Logic (formerly patch_protocol)
+        with open(path, "r", encoding="utf-8") as f:
+            source = f.read()
+            original_lines = source.splitlines(keepends=True)
+
+        tree = ast.parse(source)
+        target_node = None
+        for node in ast.walk(tree):
+            if hasattr(node, "name") and node.name == target_name:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    target_node = node
+                    break
+        
+        if not target_node:
+            return f"❌ [PATCH]: Node '{target_name}' not found."
+            
+        start_ln = target_node.lineno
+        end_ln = target_node.end_lineno
+        
+        # Indentation Matching
+        first_line_orig = original_lines[start_ln-1]
+        indentation = first_line_orig[:len(first_line_orig) - len(first_line_orig.lstrip())]
+        
+        new_lines = new_code.splitlines(keepends=True)
+        final_new_lines = []
+        for line in new_lines:
+            if line.strip() and not line.startswith((' ', '\t')):
+                final_new_lines.append(indentation + line)
+            else:
+                final_new_lines.append(line)
+        
+        if final_new_lines and not final_new_lines[-1].endswith('\n'):
+            final_new_lines[-1] += '\n'
+
+        # Integrity Check
+        lazy_patterns = [r"//\s*code\s*will\s*be", r"#\s*placeholder", r"\.\.\.\s*existing\s*code"]
+        for pattern in lazy_patterns:
+            if re.search(pattern, new_code, re.IGNORECASE):
+                return f"❌ [LAZY CODE REJECTED]: Placeholder detected ('{pattern}')."
+
+        modified_lines = original_lines[:start_ln - 1] + final_new_lines + original_lines[end_ln:]
+        new_content = "".join(modified_lines)
+        
+        # Verify result is syntactically valid
+        ast.parse(new_content)
+        
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+            
+        memory_manager.reindex_file(path)
+        return f"✅ [PATCH SUCCESS]: '{target_name}' updated in {path}."
+        
+    except Exception as e:
+        return f"🔥 [PATCH ERROR]: {str(e)}"
+
+EXPORTED_TOOLS = [refactor_code, find_code_usages, refresh_code_index, verify_code, apply_ast_patch]

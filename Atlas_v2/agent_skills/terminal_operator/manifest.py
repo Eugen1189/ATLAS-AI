@@ -14,25 +14,31 @@ def execute_command(command: str, auto_fix: bool = True, **kwargs) -> str:
     if not SecurityGuard.is_safe_command(command):
         return f"🚨 [SECURITY REJECTED]: Дія заблокована Фаєрволом AXIS. Команда '{command}' визнана небезпечною."
 
-    # 2. Project Context
+    # 2. Project Context (v4.1.0 Context-Aware)
     from core.system.path_utils import get_project_root
-    project_root = str(get_project_root())
+    # Prioritize the workspace injected by the orchestrator
+    ws = kwargs.get("current_workspace")
+    project_root = str(ws if ws else get_project_root())
 
-    logger.info("terminal.execute", command=command)
+    logger.info("terminal.execute", command=command, cwd=project_root)
 
     try:
-        # Use CREATE_NO_WINDOW on Windows to prevent popups
+        # 3. Terminal Execution Context (v4.1.0 PowerShell-First)
         startupinfo = None
+        current_cmd = command
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            # Wrap in PowerShell to enable cmdlets and better escaping
+            escaped_command = command.replace("\"", "`\"")
+            current_cmd = f'powershell -NoProfile -ExecutionPolicy Bypass -Command "{escaped_command}"'
 
         result = subprocess.run(
-            command, 
+            current_cmd, 
             shell=True, 
             capture_output=True, 
             text=True, 
-            timeout=60, 
+            timeout=120, 
             cwd=project_root,
             startupinfo=startupinfo,
             encoding='utf-8', 
@@ -56,9 +62,8 @@ def execute_command(command: str, auto_fix: bool = True, **kwargs) -> str:
             return (
 
                 f"❌ КОМАНДА ВПАЛА З ПОМИЛКОЮ:\n{error_msg}\n\n"
-                f"⛔ [CRITICAL SYSTEM DIRECTIVE]: НЕ ПИШИ ТЕКСТ КОМАНДОРУ! "
-                f"Проаналізуй помилку, виправ синтаксис команди і НЕГАЙНО виклич інструмент `execute_command` "
-                f"ще раз із правильною командою. Зроби це мовчки і миттєво!"
+                f"📍 [CWD]: {project_root}\n"
+                f"⛔ [CRITICAL SYSTEM DIRECTIVE]: Проаналізуй помилку, врахуй поточний шлях і виправ синтаксис (або перейди в папку проекту через 'switch_workspace'). НЕ ПИШИ ТЕКСТ КОМАНДОРУ! Зроби це мовчки і миттєво!"
             )
         else:
             return f"❌ Помилка: {error_msg}"

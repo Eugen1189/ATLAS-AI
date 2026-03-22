@@ -46,29 +46,6 @@ class VisionEngine:
             logger.error("vision.screen_capture_error", error=str(e))
             return f"Error: {e}"
 
-    def capture_camera(self, camera_index=0) -> str:
-        """Universal Camera Capture via DirectShow (Windows) / Default (Linux)"""
-        import cv2
-        # Lazy initialization of VideoCapture to prevent 'Access Denied'
-        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW if os.name == 'nt' else cv2.CAP_ANY)
-
-        if not cap.isOpened():
-            logger.error("vision.camera_failed", index=camera_index)
-            return "Error: Camera unavailable."
-        
-        ret, frame = cap.read()
-        if ret:
-            import cv2
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_path = os.path.join(self.storage_root, f"cam_{timestamp}.jpg")
-            cv2.imwrite(file_path, frame)
-
-            cap.release()
-            logger.info("vision.camera_captured", path=file_path)
-            return file_path
-        
-        cap.release()
-        return "Error: Failed to grab frame."
 
     def analyze(self, image_path: str, prompt: str = None, region: list = None, model: str = None) -> str:
         """
@@ -128,13 +105,9 @@ class VisionEngine:
         except Exception as e:
             return f"Analysis Exception: {e}"
 
-    def capture_and_analyze(self, source: str = "screen", prompt: str = None, model: str = "llama3.2-vision") -> str:
+    def capture_and_analyze(self, prompt: str = None, model: str = "llama3.2-vision") -> str:
         """Convenience method to capture a frame and analyze it in one go (Unified v2.9)."""
-        if source == "screen":
-            path = self.capture_screen()
-        else:
-            path = self.capture_camera()
-            
+        path = self.capture_screen()
         if "Error" in path: return path
         return self.analyze(path, prompt, model=model)
 

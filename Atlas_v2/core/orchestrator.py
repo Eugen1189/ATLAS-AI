@@ -14,10 +14,22 @@ from core.system.path_utils import get_namespace_for_path # noqa: E402
 class AxisCore:
     """Main logic for the AXIS agent orchestrator."""
     def __init__(self):
-        logger.info("system.booting", version="3.2.8")
+        logger.info("system.booting", version="6.0.0")
+        self.background_tasks = [] # [v3.8.4] Background task registry
         
-        self.project_root = str(get_project_root())
-        os.chdir(self.project_root) # Force CWD to project root for all relative paths
+        # [ANTIGRAVITY v6.0.0] Strategic Memory Recall: Load last session state
+        from core.system.session import SessionManager
+        state = SessionManager.load_state()
+        
+        default_root = str(get_project_root())
+        self.project_root = state.get("project_root", default_root)
+        
+        # [v4.5.1 FIX]: Ensure path exists or fallback to default
+        if not os.path.exists(self.project_root):
+            self.project_root = default_root
+            
+        os.chdir(self.project_root) # Force CWD to project root
+        logger.info("system.conscious_anchor", path=self.project_root)
         
         # 1. First Pass: Discovery (Zero-Config)
         primary_workspace = None
@@ -124,6 +136,20 @@ class AxisCore:
             return f"[HOT RELOAD SUCCESS]: Loaded {len(self.available_tools)} tools across {len(self.tool_index)} categories. Planner synced."
         return "[HOT RELOAD FAILED]: Brain or Planner initialization error."
 
+    def start_background_tasks(self):
+        """[DECOUPLED v3.8.4] Launches all discovered skill-level background daemons."""
+        if not self.background_tasks:
+            logger.info("system.no_background_tasks")
+            return
+            
+        logger.info("system.launching_daemons", count=len(self.background_tasks))
+        for task_func in self.background_tasks:
+            try:
+                # Daemons expect the axis_core instance as their environment
+                task_func(self)
+            except Exception as e:
+                logger.error("system.daemon_launch_failed", task=task_func.__name__, error=str(e))
+
     def get_tool_info(self, tool_name: str) -> str:
         """Returns the full documentation and signature for a specific tool."""
         if tool_name not in self.brain.tool_map:
@@ -169,7 +195,10 @@ class AxisCore:
         primary = findings.get("primary_workspace") or self.project_root
         SecurityGuard.set_workspace(primary)
         
-        # 3. Reload tools and re-init brains
+        # [v3.8.4] Background Task Registry
+        self.background_tasks = []
+        
+        # 3. Register Core Tools
         self.available_tools, self.tool_index = self._load_skills()
         
         exec_success = self.executor.initialize(self.available_tools, tool_index=self.tool_index, workspace_root=self.project_root)
@@ -182,7 +211,13 @@ class AxisCore:
         self.brain.tool_map["switch_workspace"] = {"func": self.switch_workspace, "mcp": False}
         
         if exec_success and plan_success:
-            return f"✅ [WORKSPACE SWITCHED]: Consciousness shifted to '{os.path.basename(self.project_root)}'. RAG Namespace: {new_namespace}."
+             # [v3.8.7] Return Directory Snapshot for immediate path discovery
+             try:
+                 files = os.listdir(self.project_root)[:20]
+                 files_str = ", ".join(files)
+                 return f"✅ [WORKSPACE SWITCHED]: Consciousness shifted to '{os.path.basename(self.project_root)}'.\n📂 Root contents: {files_str}..."
+             except:
+                 return f"✅ [WORKSPACE SWITCHED]: Consciousness shifted to '{os.path.basename(self.project_root)}'. RAG Namespace: {new_namespace}."
         return "⚠️ [PARTIAL SUCCESS]: Workspace switched, but some brains failed to initialize."
 
     def _load_skills(self):
@@ -225,6 +260,14 @@ class AxisCore:
                     
                     module = importlib.import_module(module_path)
                     
+                    # [v3.8.4] Autonomous Background Discovery
+                    if hasattr(module, "background_daemon") and getattr(module, "background_daemon"):
+                         if hasattr(module, "run_background_task"):
+                              task_func = getattr(module, "run_background_task")
+                              if task_func not in self.background_tasks:
+                                   self.background_tasks.append(task_func)
+                                   logger.info("system.discovered_daemon", skill=skill_folder.name)
+
                     if hasattr(module, "EXPORTED_TOOLS"):
                         category = SKILL_CATEGORIES.get(skill_folder.name, "Other")
                         if category not in tool_index:
@@ -295,6 +338,22 @@ class AxisCore:
                 bridge = get_bridge()
                 return await bridge.call_tool(tool_data["server"], tool_name, arguments)
             else:
+                # [ANTIGRAVITY v4.1.0] Inject Workspace Context into all tool calls
+                if "current_workspace" not in arguments:
+                    arguments["current_workspace"] = str(getattr(self, "project_root", get_project_root()))
+                
+                # [v5.0.0] ZERO-STUB DEFENSE: Inspect writes for generic placeholders
+                if tool_name == "write_to_file" or tool_name == "replace_file_content":
+                    content = arguments.get("CodeContent", arguments.get("ReplacementContent", ""))
+                    STUB_KEYWORDS = ["image: nginx:latest", "hello world", "[insert here]", "todo:", "print('test')"]
+                    if any(k in content.lower() for k in STUB_KEYWORDS):
+                        logger.warning("system.stub_detected", content=content[:50])
+                        return (
+                            "🚨 [INTEGRITY ERROR]: Your file content was rejected as 'Market Sabotage'. "
+                            "You are attempting to write a generic placeholder (Nginx/Todo) instead of industrial-grade code. "
+                            "RETRY with the full, original architectural implementation."
+                        )
+
                 # Execute Native
                 func = tool_data["func"]
                 import asyncio
@@ -304,6 +363,31 @@ class AxisCore:
         except Exception as e:
             logger.error("system.tool_execution_failed", tool=tool_name, error=str(e))
             return f"[EXECUTION ERROR]: {str(e)}"
+
+    def _auto_switch_if_needed(self, user_input: str):
+        """
+        [v3.7.3] High-Priority Workspace Guard:
+        Detects if the user specified a path and switches AXIS focus BEFORE planning.
+        Prevents 'Atlas Trap' where agent audits itself instead of the target.
+        """
+        import re
+        # Match Windows or Unix style absolute paths
+        path_pattern = r'([A-Za-z]:[\\/][^ \n\r"\'<>|]+|/[^ \n\r"\'<>|]+)'
+        matches = re.findall(path_pattern, user_input)
+        
+        for p in matches:
+            # Clean trailing punctuation
+            p = p.rstrip('.,!?;:)')
+            if os.path.exists(p) and os.path.isdir(p):
+                # If it's a sub-path of current, it's fine. If it's a DIFFERENT project or root, switch.
+                current_abs = os.path.abspath(self.project_root).lower()
+                target_abs = os.path.abspath(p).lower()
+                
+                if target_abs != current_abs and not target_abs.startswith(current_abs + os.sep):
+                    logger.info("system.auto_switch_workspace_triggered", target=p)
+                    self.switch_workspace(p)
+                    return True
+        return False
 
     def think(self, user_input: str, source: str = "terminal") -> str:
         """
@@ -325,6 +409,9 @@ class AxisCore:
             return f"[SECURITY] Security violation: {e}"
 
         logger.debug("system.user_input", content=user_input)
+        
+        # --- Layer 2.1: Auto-Switch Workspace Guard (v3.7.3) ---
+        switched = self._auto_switch_if_needed(user_input)
         
         # --- NEW: Reset Brain History for NEW Top-Level Task (v3.6.1) ---
         # Robust check to prevent AttributeError if brains are in inconsistent state
@@ -355,6 +442,12 @@ class AxisCore:
             
             # Level 1: Plan with filtered context
             plan = self.planner.create_plan(user_input, available_tools=filtered_tools)
+            if not plan: return "Error: Failed to generate execution strategy."
+            
+            # [ANTIGRAVITY v6.0.0] Mission Anchor: Save current session state before execution
+            from core.system.session import SessionManager
+            SessionManager.save_state(self.project_root, goal=user_input)
+            
             # Store in cache for next time (30-40% CPU logic)
             memory_manager.store_semantic_cache(user_input, plan)
         
@@ -392,6 +485,11 @@ class AxisCore:
             
             step_result = self.executor.think(task_prompt)
             
+            # [ANTIGRAVITY v4.1.0] Mission Integrity Halt: Stop the plan if a step failed fatally.
+            if "TERMINAL FAILURE" in step_result or "[INTEGRITY REJECTION]" in step_result:
+                results.append(f"--- STEP {i} (FATAL ERROR) ---\n{step_result}\n\n🛑 MISSION ABORTED: Plan integrity broken.")
+                break
+
             # Strip noise and accumulate for future steps
             clean = step_result.replace("MISSION ACCOMPLISHED", "").strip()
             if "[LAST TOOL OUTPUT]:" in clean:

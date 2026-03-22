@@ -15,13 +15,14 @@ class SecurityGuard:
     DANGEROUS_PATTERNS = [
         r"rm\s+-rf\s+/",            # Root deletion
         r"format\s+",               # Disk formatting
-        r"del\s+.*system32",        # Windows system deletion
-        r"rd\s+/s",                 # Recursive dir deletion
+        r"del\s+/s",                # Recursive Windows deletion
+        r"del\s+.*system32",        # Windows system folder deletion
+        r"rd\s+/s",                 # Recursive directory deletion
         r"mkfs",                    # Filesystem creation
         r"dd\s+if=",                # Direct disk write
         r"shutdown",                # OS shutdown
         r"reboot",                  # OS reboot
-        r"\.exe\b",                # Untrusted executables (boundary check)
+        r"\.exe\b",                 # Untrusted executables (boundary check)
         r"powershell\s+.*-ExecutionPolicy\s+Bypass", # Policy bypass
         r"> /dev/sd[a-z]",          # Direct disk write
         r":\(\){ :\|:& };:",        # Fork bomb
@@ -70,11 +71,19 @@ class SecurityGuard:
     @staticmethod
     def is_safe_path(path_str: str, check_core: bool = False) -> bool:
         """
+        Backward-compatible boolean check for path safety.
+        """
+        safe, _ = SecurityGuard.validate_path(path_str, check_core)
+        return safe
+
+    @staticmethod
+    def validate_path(path_str: str, check_core: bool = False) -> tuple[bool, str]:
+        """
         Validates if a given path is safe to execute or modify.
-        Returns a boolean.
+        Returns (is_safe: bool, error_message: str).
         """
         if not path_str:
-            return True
+            return True, ""
             
         p = str(Path(path_str).resolve()).replace("\\", "/").lower()
         
@@ -82,13 +91,13 @@ class SecurityGuard:
         for critical in SecurityGuard.CRITICAL_SYSTEM_PATHS:
             if critical in p:
                 logger.warning("security.critical_path_blocked", path=path_str)
-                return False
+                return False, f"🚨 [SECURITY]: Path '{path_str}' targets protected system directory ({critical})."
 
         # 2. Blacklist Check: Block access to credentials and sensitive config
         for sensitive in SecurityGuard.BLACKLIST:
             if sensitive in p:
                 logger.warning("security.blacklist_blocked", path=path_str, pattern=sensitive)
-                return False
+                return False, f"🚨 [SECURITY]: Access denied. Path '{path_str}' contains blacklisted pattern '{sensitive}' (BUNKER v5.5 Policy)."
         
         # 3. Workspace-Fluid Check: If it's inside the workspace, it's generally trusted
         is_in_workspace = p.startswith(SecurityGuard.workspace_root)
@@ -96,14 +105,9 @@ class SecurityGuard:
         # 4. Core Protection (Optional Layer)
         if check_core:
             # We prevent direct rewrites of core AXIS system files even inside workspace
-            # unless they are explicitly marked as user-modifiable (like blueprints/configs)
             if "/core/" in p and "/ui/" not in p and "/config/" not in p:
-                # If we are in the workspace, we might be the developer themselves!
-                # Но для безпеки ми все одно попереджаємо, якщо це не UI або config
-                if is_in_workspace:
-                    logger.debug("security.core_access_in_workspace", path=path_str)
-                else:
+                if not is_in_workspace:
                     logger.warning("security.core_override_blocked", path=path_str)
-                    return False
+                    return False, "🚨 [SECURITY]: Direct override of system core modules is strictly forbidden."
 
-        return True
+        return True, ""

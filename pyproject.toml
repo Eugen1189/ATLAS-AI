@@ -18,23 +18,16 @@ dependencies = [
     "requests==2.32.5",
     "pyyaml==6.0.3",
     "psutil>=5.9.0",
-    "pyautogui>=0.9.54",
-    "pygetwindow>=0.0.9",
     "numpy>=2.3.0,<3.0.0",
-    "opencv-python>=4.10.0",
-    "mediapipe>=0.10.0",
     "mcp>=1.1.2",
     "googlesearch-python>=1.2.3",
     "structlog>=24.4.0",
     "ollama>=0.6.1",
     "PyQt6>=6.6.0",
     "chromadb>=0.5.0",
-    "speechrecognition>=3.10.0",
-    "pyttsx3>=2.90",
     "nest-asyncio>=1.6.0",
     "Pillow>=10.0.0",
     "beautifulsoup4>=4.12.0",
-    "pygame>=2.5.0"
 ]
 requires-python = ">=3.11"
 

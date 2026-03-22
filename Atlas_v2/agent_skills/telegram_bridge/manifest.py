@@ -4,24 +4,9 @@ import requests
 import threading
 import re
 from .listener import PENDING_CONFIRMATIONS
+from .utils import format_telegram_response
 from core.skills.wrapper import agent_tool
 
-def clean_llm_text(text: str) -> str:
-    """Вирізає технічне сміття та теги з фінального тексту для Telegram."""
-    if not text: return ""
-    # Видаляємо блоки думок <thought>...</thought>
-    text = re.sub(r'<thought>.*?</thought>', '', text, flags=re.DOTALL)
-    # Видаляємо маркдаун блоки JSON
-    if "```json" in text:
-        try:
-            match = re.search(r'```json\s*(\{.*?\})\s*```', text, re.DOTALL)
-            if match:
-                data = json.loads(match.group(1))
-                if "response" in data: return data["response"]
-        except: pass
-        text = re.sub(r'```json.*?```', '', text, flags=re.DOTALL)
-    
-    return text.strip()
 
 @agent_tool
 def send_telegram_message(text: str, **kwargs) -> str:
@@ -31,7 +16,7 @@ def send_telegram_message(text: str, **kwargs) -> str:
     if not token or not chat_id: 
         return "❌ Error: Telegram credentials missing in .env"
     
-    clean_text = clean_llm_text(text)
+    clean_text = format_telegram_response(text)
     if not clean_text: return "⚠️ Warning: Cleaned message text is empty."
     
     try:
@@ -113,5 +98,11 @@ def ask_user_confirmation(text: str, **kwargs) -> bool:
         return False
     except Exception: 
         return False
+
+# [v3.8.4] Decoupling Protocol
+background_daemon = True
+def run_background_task(axis_core):
+    from .listener import start_telegram_listener
+    start_telegram_listener(axis_core)
 
 EXPORTED_TOOLS = [send_telegram_message, send_telegram_photo, ask_user_confirmation]

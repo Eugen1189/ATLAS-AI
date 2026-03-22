@@ -227,20 +227,31 @@ class OllamaBrain(BaseBrain):
                 from core.system.router import SemanticRouter
                 limit = getattr(SemanticRouter, "RETRY_LIMIT", 2)
 
-                if call_count >= limit and tool_name not in ["take_screenshot", "list_directory", "read_file"]:
+                if call_count >= limit:
                      self.history.append({"role": "assistant", "content": msg_content})
-                     self.history.append({"role": "user", "content": f"### SYSTEM: Action '{tool_name}' failed with these arguments {limit} times. STOP. Request human assistance or try a completely different approach."})
-                     continue
+                     error_alert = (
+                         f"### 🛑 TERMINAL FAILURE: Action '{tool_name}' has failed {limit} times with these arguments.\n"
+                         "### ⚡ ANTI-LOOP TRIGGERED: STOPPING TASK-DRIFT. \n"
+                         "### 👤 ACTION REQUIRED: Possible workspace lock, permission error, or syntax deadlock. "
+                         "Please manually intervene or change my direction."
+                     )
+                     self.history.append({"role": "user", "content": error_alert})
+                     return error_alert
                 
                 call_history[call_sig] = call_count + 1
 
                 try:
                     logger.info("ollama.executing", tool=tool_name, args=args)
                     check_path = args.get("path")
-                    if check_path and not SecurityGuard.is_safe_path(check_path):
-                        # [v3.7.0] Workspace tools are allowed to target outside paths as they update the root
-                        if tool_name not in ["switch_workspace", "open_workspace", "setup_new_project"]:
-                            result = "🚨 [SECURITY]: Access denied (Outside trusted workspace)."
+                    if check_path:
+                        is_safe, error_msg = SecurityGuard.validate_path(check_path)
+                        if not is_safe:
+                            # [v3.7.0] Workspace tools are allowed to target outside paths as they update the root
+                            if tool_name not in ["switch_workspace", "open_workspace", "setup_new_project"]:
+                                result = error_msg or "🚨 [SECURITY]: Access denied (BUNKER Policy Violation)."
+                            else:
+                                tool_data = self.tool_map[tool_name]
+                                result = tool_data["func"](**args)
                         else:
                             tool_data = self.tool_map[tool_name]
                             result = tool_data["func"](**args)
@@ -279,6 +290,21 @@ class OllamaBrain(BaseBrain):
                     self.history.append({"role": "user", "content": f"### Execution Error: {e}.\n\n{fix_prompt}"})
                     continue
             else:
+                # [PROTOCOL 4.0] INTEGRITY LOCK: Reject MISSION ACCOMPLISHED if the sequence ended in failure.
+                if "MISSION ACCOMPLISHED" in msg_content:
+                    last_results = [m["content"] for m in self.history if m["role"] == "user" and "### Result" in m["content"]]
+                    if last_results:
+                        last_res = last_results[-1].lower()
+                        if "error" in last_res or "❌" in last_res or "failed" in last_res:
+                            self.history.append({"role": "assistant", "content": msg_content})
+                            rejection = (
+                                "### 🛑 [INTEGRITY REJECTION]: You claimed MISSION ACCOMPLISHED, but your last action failed.\n"
+                                "### FACT: You have no evidence of task completion. \n"
+                                "### ACTION: Do NOT lie to the Commander. Fix the failure (e.g. start Docker, fix Dockerfile) or report the SPECIFIC blocker."
+                            )
+                            self.history.append({"role": "user", "content": rejection})
+                            continue
+
                 # If no tool call and not finished, re-prompt once (v3.4.2)
                 if not any_success and "MISSION ACCOMPLISHED" not in msg_content and depth < 3:
                     self.history.append({"role": "assistant", "content": msg_content})

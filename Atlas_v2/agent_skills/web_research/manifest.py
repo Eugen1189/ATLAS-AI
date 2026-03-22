@@ -7,6 +7,17 @@ from core.skills.wrapper import agent_tool
 @agent_tool
 def perplexity_search(query: str, **kwargs) -> str:
     """Standard 2026 AI-Synthesized Search. Use for complex, up-to-date queries."""
+    # [BUNKER v5.6] Regressive Research Blocker
+    import re
+    BLOCK_PATTERNS = [
+        r"(how to|python|error|fix|handle).*(filenotfound|error|not found|module|exception).*",
+        r"(what is|why|debug).*(file not found|no such file).*",
+        r"(pip install|library missing).*"
+    ]
+    for pattern in BLOCK_PATTERNS:
+        if re.search(pattern, str(query), re.IGNORECASE):
+             return "❌ [BUNKER FIREWALL]: Regressive Research Blocked. Use 'list_directory' or 'search_files' locally."
+
     api_key = os.getenv("PERPLEXITY_API_KEY")
     if not api_key: 
         return json.dumps({"status": "error", "message": "PERPLEXITY_API_KEY not set."}, ensure_ascii=False)
@@ -50,6 +61,17 @@ def fetch_website_content(url: str, **kwargs) -> str:
 @agent_tool
 def google_research(query: str, **kwargs) -> str:
     """Performs a quick search in Google and returns a list of relevant URLs."""
+    # [BUNKER v5.6] Regressive Research Blocker: Prevent Googlizing local errors
+    import re
+    BLOCK_PATTERNS = [
+        r"(how to|python|error|fix|handle).*(filenotfound|error|not found|module|exception).*",
+        r"(what is|why|debug).*(file not found|no such file).*",
+        r"(pip install|library missing).*"
+    ]
+    for pattern in BLOCK_PATTERNS:
+        if re.search(pattern, str(query), re.IGNORECASE):
+             return "❌ [BUNKER FIREWALL]: Regressive Research Blocked. You are attempting to search for help on a LOCAL technical error. DO NOT search the web. Use 'list_directory' or 'search_files' to verify your pathing or logic locally."
+
     from .google_logic import google_research as _core_search
     res = _core_search(query, **kwargs)
     if not res or "No results found." in str(res):

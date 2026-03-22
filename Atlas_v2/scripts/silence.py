@@ -1,6 +1,5 @@
 import os
 import psutil
-import signal
 import time
 
 def kill_hardcore():

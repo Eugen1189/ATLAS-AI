@@ -106,11 +106,12 @@ class TestCoverage80(unittest.IsolatedAsyncioTestCase):
         self.assertIn("✅", res)
 
     def test_security_firewall_logic_new(self):
-        from core.security.firewall import axis_firewall
-        self.assertTrue(axis_firewall.is_request_allowed("terminal"))
-        # Test blocking dangerous commands
-        res = axis_firewall.sanitize_input("rm -rf /", "terminal")
-        self.assertIn("[SECURITY]", res)
+        from core.security.firewall import AxisFirewall, SecurityViolation
+        fw = AxisFirewall()
+        self.assertTrue(fw.is_request_allowed("terminal"))
+        # Test blocking injection commands - 'sudo rm' is in forbidden_patterns
+        with self.assertRaises(SecurityViolation):
+            fw.sanitize_input("Please sudo rm my files", "terminal")
 
     def test_brain_logic_new(self):
         from core.brain.gemini_brain import GeminiBrain

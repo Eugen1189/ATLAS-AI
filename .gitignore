@@ -71,3 +71,5 @@ vision_*.png
 /tmp/
 /READY.txt
 /error.log
+.axis_session.json
+**/__pycache__/

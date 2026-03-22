@@ -23,7 +23,7 @@ class VectorStore:
     - Session: Short-term (recent logs, current context)
     """
 
-    def __init__(self, persist_dir: str = None, namespace: str = "default"):
+    def __init__(self, persist_dir: str = None, namespace: str = "default", project_root: str = None):
         if not CHROMADB_AVAILABLE:
             logger.warning("rag.chromadb_missing",
                            reason="chromadb package is not installed. RAG disabled.")
@@ -34,10 +34,11 @@ class VectorStore:
 
         # Scoped Memory: create separate subdirectories per workspace/namespace
         if persist_dir is None:
-            base_memories = os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "..", "..", "..", "memories"
-            ))
-            persist_dir = os.path.join(base_memories, "vector_db", namespace)
+            if not project_root:
+                 project_root = os.path.abspath(os.path.join(
+                    os.path.dirname(__file__), "..", "..", ".."
+                ))
+            persist_dir = os.path.join(project_root, "memories", "vector_db", namespace)
 
         os.makedirs(persist_dir, exist_ok=True)
         self.persist_dir = persist_dir
@@ -63,6 +64,11 @@ class VectorStore:
                 metadata={"hnsw:space": "cosine"}
             )
             
+            # [v3.7.2] Industrial Privacy Audit
+            if os.getenv("AXIS_ENCRYPT_MEMORIES") != "TRUE":
+                logger.warning("rag.privacy_audit_failed",
+                               reason="Local vector database is NOT encrypted. Hardware-level encryption or AXIS_ENCRYPT_MEMORIES is required for industrial grade safety.")
+
             logger.info("rag.vector_store_ready",
                         namespace=namespace,
                         knowledge_docs=self.knowledge.count(),
